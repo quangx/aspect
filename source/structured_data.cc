@@ -74,6 +74,21 @@ namespace aspect
         return idx;
       }
 
+      template<int dim>
+      TableIndices<dim>
+      compute_table_indices_reverse_order(const TableIndices<dim> &sizes, const unsigned int i)
+      {
+        TableIndices<dim> idx;
+        unsigned int remain = i;
+        for (int d=dim-1; d>=0; --d)
+          {
+            idx[d] = remain % sizes[d];
+            remain = remain / sizes[d];
+          }
+        return idx;
+      }
+
+
       /**
        * Parse the contents of the ASCII file given in @p text.
        *
@@ -154,8 +169,8 @@ namespace aspect
                                    + Utilities::to_string(n_components)
                                    + " columns."));
           }
-            else
-            n_components = data_column_names.size();
+        else
+          n_components = data_column_names.size();
 
         for (unsigned int i = 0; i < dim; i++)
           {
