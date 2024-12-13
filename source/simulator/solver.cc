@@ -26,10 +26,12 @@
 #include <aspect/mesh_deformation/interface.h>
 
 #include <deal.II/base/signaling_nan.h>
+#include <deal.II/lac/la_vector.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/solver_bicgstab.h>
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/matrix_free/operators.h>
 
 namespace aspect
 {
@@ -163,7 +165,43 @@ namespace aspect
       return dst.l2_norm();
     }
 
+    /**
+     * Matrix free Laplace operator for bfbt
+     */
 
+     template <int dim>
+     class Coefficient : public Function<dim>
+    {
+    public:
+      virtual double value(const Point<dim>  &p,
+                           const unsigned int component = 0) const override;
+  
+      template <typename number>
+      number value(const Point<dim, number> &p,
+                   const unsigned int        component = 0) const;
+    };
+     template<int dim, int fe_degree,typename number>
+     class LaplaceOperator:public MatrixFreeOperators::Base<dim,LinearAlgebra::Vector,number>
+     {
+      public:
+        using value_type=number;
+        LaplaceOperator();
+        void clear() override;
+        void evaluate_coefficient(const Coefficient<dim> &coefficient_function);
+        virtual void compute_diagonal() override;
+      private:
+        virtual void apply_add(LinearAlgebra::Vector &dst,
+        const LinearAlgebra::Vector &src) const override;
+        void local_apply(const MatrixFree<dim,number> & data,
+        LinearAlgebra::Vector&dst,
+        const LinearAlgebra::Vector &src,
+        const std::pair<unsigned int,unsigned int> &cell_range) const;
+        Table<2,VectorizedArray<number>> coefficient;
+
+
+
+     };
+    
     /**
      * Implement the block Schur preconditioner for the Stokes system.
      */
