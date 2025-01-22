@@ -278,7 +278,10 @@ namespace aspect
 
       {
         // the u-block of dst only contains zeros
-        stokes_matrix.block(0,1).vmult(utmp[0],dst[1]);
+
+        // stokes_matrix.block(0,1).vmult(utmp[0],dst[1]);
+        stokes_matrix.vmult(utmp, dst); // B^T
+
         utmp.block(0) *= -1.0;
         utmp.block(0) += src.block(0);
       }
@@ -363,10 +366,10 @@ namespace aspect
   }
 
 
-  template <int dim,degree_v,typename number>
+  template <int dim,int degree_v,typename number>
   MatrixFreeStokesOperators::DivOperator<dim, degree_v,number>::DivOperator()
   :
-  MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>
+  MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>()
   {}
   
 
