@@ -32,6 +32,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/numerics/vector_tools.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -277,7 +278,7 @@ namespace aspect
 
       {
         // the u-block of dst only contains zeros
-        stokes_matrix.vmult(utmp, dst); // B^T
+        stokes_matrix.block(0,1).vmult(utmp[0],dst[1]);
         utmp.block(0) *= -1.0;
         utmp.block(0) += src.block(0);
       }
@@ -362,6 +363,12 @@ namespace aspect
   }
 
 
+  template <int dim,degree_v,typename number>
+  MatrixFreeStokesOperators::DivOperator<dim, degree_v,number>::DivOperator()
+  :
+  MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>
+  {}
+  
 
   template <int dim, int degree_v, typename number>
   MatrixFreeStokesOperators::StokesOperator<dim,degree_v,number>::StokesOperator ()
