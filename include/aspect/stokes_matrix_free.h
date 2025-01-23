@@ -319,7 +319,7 @@ namespace aspect
     /*
     Laplace operator for matrix free bfbt
     */
-    template <int dim, int degree_p, typename number>
+    template <int dim, int fe_degree, typename number>
     class LaplaceOperator
       : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
     {
