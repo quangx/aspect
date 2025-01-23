@@ -180,7 +180,73 @@ namespace aspect
        */
       void clear();
     };
+        
+    template <int dim, int degree_v, typename number>
+    class DivOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>
+    {
+      public:
 
+        /**
+         * Constructor.
+         */
+        DivOperator ();
+
+        /**
+         * Reset object.
+         */
+        void clear () override;
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::BlockVector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function doesn't do anything, it's created to use the matrixfree loop.
+         */
+        void local_apply_face (const dealii::MatrixFree<dim, number> &data,
+                               dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                               const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                               const std::pair<unsigned int, unsigned int> &face_range) const;
+
+        /**
+         * Apply the stabilization on free surface faces.
+         */
+        void local_apply_boundary_face (const dealii::MatrixFree<dim, number> &data,
+                                        dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                                        const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                                        const std::pair<unsigned int, unsigned int> &face_range) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
     /**
      * Operator for the entire Stokes block.
      */
@@ -250,6 +316,69 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+    /*
+    Laplace operator for matrix free bfbt
+    */
+    template <int dim, int degree_p, typename number>
+    class LaplaceOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+
+        /**
+         * Constructor
+         */
+        LaplaceOperator ();
+
+        /**
+         * Reset the object.
+         */
+        void clear () override;
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+
+        /**
+         * Computes the diagonal contribution from a cell matrix.
+         */
+        void local_compute_diagonal (const MatrixFree<dim,number>                     &data,
+                                     dealii::LinearAlgebra::distributed::Vector<number>  &dst,
+                                     const unsigned int                               &dummy,
+                                     const std::pair<unsigned int,unsigned int>       &cell_range) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
+
 
     /**
      * Operator for the pressure mass matrix used in the block preconditioner
