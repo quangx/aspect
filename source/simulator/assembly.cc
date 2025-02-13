@@ -470,8 +470,9 @@ namespace aspect
     else{
       if(!parameters.use_bfbt)
         Mp_preconditioner = std::make_unique<LinearAlgebra::PreconditionILU>();
-      else
+      else{
         Mp_preconditioner=std::make_unique<LinearAlgebra::PreconditionAMG>();
+      }
     }
 
     Amg_preconditioner = std::make_unique<LinearAlgebra::PreconditionAMG>();
@@ -517,7 +518,7 @@ namespace aspect
         else{
           LinearAlgebra::PreconditionAMG *Mp_preconditioner_AMG
             = dynamic_cast<LinearAlgebra::PreconditionAMG *> (Mp_preconditioner.get());
-          Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1));
+          Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data);
         }
       }
     else

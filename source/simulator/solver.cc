@@ -521,7 +521,7 @@ namespace aspect
           TrilinosWrappers::MPI::Vector wtmp;
           wtmp.reinit(inverse_lumped_mass_matrix);
           {
-            deallog.depth_console(10);
+            // deallog.depth_console(10);
             SolverControl solver_control(1000, 1e-6 * src.l2_norm(), false, true);
             SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
