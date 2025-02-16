@@ -516,9 +516,11 @@ namespace aspect
           Mp_preconditioner_ILU->initialize (system_preconditioner_matrix.block(1,1));
         }
         else{
+          LinearAlgebra::PreconditionAMG::AdditionalData Amg_data_p;
+          Amg_data_p.coarse_type="Gauss-Seidel";
           LinearAlgebra::PreconditionAMG *Mp_preconditioner_AMG
             = dynamic_cast<LinearAlgebra::PreconditionAMG *> (Mp_preconditioner.get());
-          Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data);
+          Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data_p);
         }
       }
     else
