@@ -23,6 +23,7 @@
 #include <aspect/utilities.h>
 
 #include <deal.II/base/signaling_nan.h>
+#include <deal.II/lac/affine_constraints.h>
 
 namespace aspect
 {
@@ -149,7 +150,7 @@ namespace aspect
             {
               const double sqrt_eta = std::sqrt(eta);
               const unsigned int pressure_component_index = this->introspection().component_indices.pressure;
-
+              const AffineConstraints<double> &current_constraints=this->get_current_constraints();
               for (unsigned int i = 0; i < stokes_dofs_per_cell; ++i)
                 {
                   for (unsigned int j = 0; j < stokes_dofs_per_cell; ++j)
@@ -157,8 +158,17 @@ namespace aspect
 
 
                       // i and j are not pressures
-                      if (scratch.dof_component_indices[i] != pressure_component_index && scratch.dof_component_indices[j] != pressure_component_index)
-                        data.local_inverse_lumped_mass_matrix[i] += sqrt_eta*scalar_product(scratch.phi_u[i],scratch.phi_u[j])*JxW;
+                      if (scratch.dof_component_indices[i] != pressure_component_index && scratch.dof_component_indices[j] != pressure_component_index){
+                        if(!current_constraints.is_constrained(i))
+                          data.local_inverse_lumped_mass_matrix[i] += sqrt_eta*scalar_product(scratch.phi_u[i],scratch.phi_u[j])*JxW;
+                        else{
+                          data.local_inverse_lumped_mass_matrix[i] += this->get_parameters().initial_global_refinement*sqrt_eta*scalar_product(scratch.phi_u[i],scratch.phi_u[j])*JxW;
+
+                        }
+                       
+                        
+                      }
+
 
 
                       // i and j are pressures
