@@ -150,7 +150,6 @@ namespace aspect
             {
               const double sqrt_eta = std::sqrt(eta);
               const unsigned int pressure_component_index = this->introspection().component_indices.pressure;
-              const AffineConstraints<double> &current_constraints=this->get_current_constraints();
               for (unsigned int i = 0; i < stokes_dofs_per_cell; ++i)
                 {
                   for (unsigned int j = 0; j < stokes_dofs_per_cell; ++j)
