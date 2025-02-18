@@ -2112,6 +2112,7 @@ namespace aspect
        * stores the inverted lumped velocity mass matrix.
        */
       LinearAlgebra::BlockVector                                inverse_lumped_mass_matrix;
+      LinearAlgebra::BlockVector                                boundary_corrected_inverse_lumped_mass_matrix;
 
       /**
        * An object that contains the entries of preconditioner

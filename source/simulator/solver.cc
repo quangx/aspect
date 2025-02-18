@@ -464,6 +464,7 @@ namespace aspect
          * @param mp_preconditioner The preconditioner for @p mp_matrix
          * @param solver_tolerance The relative solver tolerance for the inner solve
          * @param inverse_lumped_mass_matrix Lumped mass matrix associated with the velocity block
+         * @param boundary_corrected_inverse_lumped_mass_matrix Lumped mass matrix associated with the velocity block. Boundary DoF's are weighted.
          * @param system_matrix Sparse block matrix storing the Stokes system of the form
          * [A B^T
          *  B 0].
@@ -472,6 +473,7 @@ namespace aspect
                      const PreconditionerMp &mp_preconditioner,
                      const double solver_tolerance,
                      const TrilinosWrappers::MPI::Vector &inverse_lumped_mass_matrix,
+                     const TrilinosWrappers::MPI::Vector &boundary_corrected_inverse_lumped_mass_matrix,
                      const TrilinosWrappers::BlockSparseMatrix &system_matrix);
 
         void vmult(TrilinosWrappers::MPI::Vector &dst,
@@ -485,6 +487,7 @@ namespace aspect
         const PreconditionerMp &mp_preconditioner;
         const double solver_tolerance;
         const TrilinosWrappers::MPI::Vector  &inverse_lumped_mass_matrix;
+        const TrilinosWrappers::MPI::Vector  &boundary_corrected_inverse_lumped_mass_matrix;
         const TrilinosWrappers::BlockSparseMatrix &system_matrix;
     };
 
@@ -494,12 +497,14 @@ namespace aspect
       const PreconditionerMp &mp_preconditioner,
       const double solver_tolerance,
       const TrilinosWrappers::MPI::Vector &inverse_lumped_mass_matrix,
+      const TrilinosWrappers::MPI::Vector &boundary_corrected_inverse_lumped_mass_matrix,
       const TrilinosWrappers::BlockSparseMatrix &system_matrix)
       : n_iterations_ (0),
         mp_matrix (mp_matrix),
         mp_preconditioner (mp_preconditioner),
         solver_tolerance (solver_tolerance),
         inverse_lumped_mass_matrix(inverse_lumped_mass_matrix),
+        boundary_corrected_inverse_lumped_mass_matrix(boundary_corrected_inverse_lumped_mass_matrix),
         system_matrix (system_matrix)
     {}
 
@@ -542,7 +547,7 @@ namespace aspect
             n_iterations_ += solver_control.last_step();
             system_matrix.block(0,1).vmult(utmp,ptmp);
 
-            utmp.scale(inverse_lumped_mass_matrix);
+            utmp.scale(boundary_corrected_inverse_lumped_mass_matrix);
             system_matrix.block(0,0).vmult(wtmp,utmp);
             wtmp.scale(inverse_lumped_mass_matrix);
             system_matrix.block(1,0).vmult(ptmp,wtmp);
@@ -1211,6 +1216,7 @@ namespace aspect
                       *Mp_preconditioner,
                       parameters.linear_solver_S_block_tolerance,
                       inverse_lumped_mass_matrix.block(0),
+                      boundary_corrected_inverse_lumped_mass_matrix.block(0),
                       system_matrix);
           }
         else

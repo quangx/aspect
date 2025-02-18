@@ -1328,8 +1328,10 @@ namespace aspect
       }
 
     system_preconditioner_matrix.reinit (sp);
-    if (parameters.use_bfbt)
+    if (parameters.use_bfbt){
       inverse_lumped_mass_matrix.reinit(introspection.index_sets.stokes_partitioning);
+      boundary_corrected_inverse_lumped_mass_matrix.reinit(introspection.index_sets.stokes_partitioning);
+    }
   }
 
 

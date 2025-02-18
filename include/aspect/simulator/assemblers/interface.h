@@ -373,6 +373,7 @@ namespace aspect
 
           FullMatrix<double> local_matrix;
           Vector<double> local_inverse_lumped_mass_matrix;
+          Vector<double> local_boundary_corrected_inverse_lumped_mass_matrix;
           std::vector<types::global_dof_index> local_dof_indices;
 
           /**

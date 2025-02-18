@@ -312,6 +312,7 @@ namespace aspect
     scratch.reinit(cell);
     data.local_matrix = 0;
     data.local_inverse_lumped_mass_matrix = 0;
+    data.local_boundary_corrected_inverse_lumped_mass_matrix = 0;
 
     scratch.material_model_inputs.reinit  (scratch.finite_element_values,
                                            cell,
@@ -344,8 +345,10 @@ namespace aspect
     current_constraints.distribute_local_to_global (data.local_matrix,
                                                     data.local_dof_indices,
                                                     system_preconditioner_matrix);
-    if (parameters.use_bfbt)
+    if (parameters.use_bfbt){
       current_constraints.distribute_local_to_global(data.local_inverse_lumped_mass_matrix,data.local_dof_indices,inverse_lumped_mass_matrix);
+      current_constraints.distribute_local_to_global(data.local_boundary_corrected_inverse_lumped_mass_matrix,data.local_dof_indices,boundary_corrected_inverse_lumped_mass_matrix);
+    }
   }
 
 
@@ -411,15 +414,16 @@ namespace aspect
 
     system_preconditioner_matrix.compress(VectorOperation::add);
     if (parameters.use_bfbt)
-      {
+      { 
+        boundary_corrected_inverse_lumped_mass_matrix.compress(VectorOperation::add);
         inverse_lumped_mass_matrix.compress(VectorOperation::add);
         IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
         for(auto i: local_indices){
           if(current_constraints.is_constrained(i)){
-            inverse_lumped_mass_matrix.block(0)[i]*=pow(2,parameters.initial_global_refinement-1);
+            boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i]*pow(2,parameters.initial_global_refinement-1);
           }
         }
-        inverse_lumped_mass_matrix.compress(VectorOperation::insert);
+        boundary_corrected_inverse_lumped_mass_matrix.compress(VectorOperation::insert);
         
         
         for (auto i: local_indices)
@@ -430,9 +434,11 @@ namespace aspect
               }
             else
               {
+                boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=1.0/boundary_corrected_inverse_lumped_mass_matrix.block(0)[i];
                 inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
               }
           }
+        boundary_corrected_inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
         inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
       }
 

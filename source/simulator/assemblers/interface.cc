@@ -385,6 +385,7 @@ namespace aspect
           local_matrix (stokes_dofs_per_cell,
                         stokes_dofs_per_cell),
           local_inverse_lumped_mass_matrix (stokes_dofs_per_cell),
+          local_boundary_corrected_inverse_lumped_mass_matrix(stokes_dofs_per_cell),
           local_dof_indices (stokes_dofs_per_cell)
         {}
 
@@ -396,6 +397,7 @@ namespace aspect
           :
           local_matrix (data.local_matrix),
           local_inverse_lumped_mass_matrix (data.local_inverse_lumped_mass_matrix),
+          local_boundary_corrected_inverse_lumped_mass_matrix(data.local_boundary_corrected_inverse_lumped_mass_matrix),
           local_dof_indices (data.local_dof_indices)
         {}
 
