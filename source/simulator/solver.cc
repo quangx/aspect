@@ -549,7 +549,7 @@ namespace aspect
 
             utmp.scale(inverse_lumped_mass_matrix);
             system_matrix.block(0,0).vmult(wtmp,utmp);
-            wtmp.scale(inverse_lumped_mass_matrix);
+            wtmp.scale(boundary_corrected_inverse_lumped_mass_matrix);
             system_matrix.block(1,0).vmult(ptmp,wtmp);
 
             dst=0;
