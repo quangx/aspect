@@ -547,7 +547,7 @@ namespace aspect
             n_iterations_ += solver_control.last_step();
             system_matrix.block(0,1).vmult(utmp,ptmp);
 
-            utmp.scale(boundary_corrected_inverse_lumped_mass_matrix);
+            utmp.scale(inverse_lumped_mass_matrix);
             system_matrix.block(0,0).vmult(wtmp,utmp);
             wtmp.scale(inverse_lumped_mass_matrix);
             system_matrix.block(1,0).vmult(ptmp,wtmp);

@@ -419,18 +419,19 @@ namespace aspect
         inverse_lumped_mass_matrix.compress(VectorOperation::add);
         IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
         for(auto i: local_indices){
-          if(current_constraints.is_constrained(i)){
-            boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i]*pow(2,parameters.initial_global_refinement-1);
-          }
+          // if(current_constraints.is_constrained(i)){
+          //   boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i]/pow(2,parameters.initial_global_refinement);
+          // }
         }
         boundary_corrected_inverse_lumped_mass_matrix.compress(VectorOperation::insert);
         
         
         for (auto i: local_indices)
           {
-            if (inverse_lumped_mass_matrix.block(0)[i]==0.0)
+            if (inverse_lumped_mass_matrix.block(0)[i]==0.0 || boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]==0.0)
               {
                 inverse_lumped_mass_matrix.block(0)[i] = 1.0;
+                boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=1.0;
               }
             else
               {
