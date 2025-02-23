@@ -420,7 +420,7 @@ namespace aspect
         IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
         for(auto i: local_indices){
           if(current_constraints.is_constrained(i)){
-            boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i]*pow(2,parameters.initial_global_refinement);
+            boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i]/pow(2,parameters.initial_global_refinement);
           }
           else{
             boundary_corrected_inverse_lumped_mass_matrix.block(0)[i]=inverse_lumped_mass_matrix.block(0)[i];
