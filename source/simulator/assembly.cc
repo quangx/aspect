@@ -518,6 +518,7 @@ namespace aspect
         else{
           LinearAlgebra::PreconditionAMG::AdditionalData Amg_data_p;
           Amg_data_p.coarse_type="Gauss-Seidel";
+          Amg_data_p.aggregation_threshold=.02;
           LinearAlgebra::PreconditionAMG *Mp_preconditioner_AMG
             = dynamic_cast<LinearAlgebra::PreconditionAMG *> (Mp_preconditioner.get());
           Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data_p);
