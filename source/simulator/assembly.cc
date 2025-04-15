@@ -37,6 +37,7 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/signaling_nan.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/grid/filtered_iterator.h>
@@ -343,8 +344,11 @@ namespace aspect
     current_constraints.distribute_local_to_global (data.local_matrix,
                                                     data.local_dof_indices,
                                                     system_preconditioner_matrix);
-    if (parameters.use_bfbt)
-      current_constraints.distribute_local_to_global(data.local_inverse_lumped_mass_matrix,data.local_dof_indices,inverse_lumped_mass_matrix);
+    if (parameters.use_bfbt){
+      AffineConstraints<double> empty_constraints;
+      empty_constraints.close();
+      empty_constraints.distribute_local_to_global(data.local_inverse_lumped_mass_matrix,data.local_dof_indices,inverse_lumped_mass_matrix);
+    }
   }
 
 
