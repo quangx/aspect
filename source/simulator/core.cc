@@ -836,7 +836,7 @@ namespace aspect
 
 
     current_constraints_prec.close();
-    std::cout << current_constraints_prec.n_constraints() << std::endl;
+    // std::cout << current_constraints_prec.n_constraints() << std::endl;
 
     // TODO: We should use current_constraints.is_consistent_in_parallel()
     // here to assert that our constraints are consistent between
