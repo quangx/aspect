@@ -18,13 +18,13 @@ subsection Solver parameters
   subsection Stokes solver parameters
     set Stokes solver type = block AMG
     set Use full A block as preconditioner              = true
-    set Number of cheap Stokes solver steps             = 500
-    set Maximum number of expensive Stokes solver steps = 0
+    set Number of cheap Stokes solver steps             = 0
+    set Maximum number of expensive Stokes solver steps = 200
     set Linear solver tolerance                         = 1e-6
     set GMRES solver restart length                     = 100
     set Use weighted BFBT for Schur complement          = true
     set Krylov method for cheap solver steps            = GMRES
-    set Linear solver A block tolerance                 = 1e-12
+    set Linear solver A block tolerance                 = 1e-6
   end
 
   subsection AMG parameters
