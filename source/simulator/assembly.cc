@@ -473,8 +473,10 @@ namespace aspect
     // When we solve with melt migration, the pressure block contains
     // both pressures and contains an elliptic operator, so it makes
     // sense to use AMG instead of ILU:
-    if (parameters.include_melt_transport || parameters.use_bfbt)
+    if (parameters.include_melt_transport || parameters.use_bfbt){
       Mp_preconditioner = std::make_unique<LinearAlgebra::PreconditionAMG>();
+      
+    }
     else
       Mp_preconditioner = std::make_unique<LinearAlgebra::PreconditionILU>();
 
@@ -516,7 +518,15 @@ namespace aspect
         if (parameters.use_bfbt)
           {
             LinearAlgebra::PreconditionAMG *Mp_preconditioner_AMG = dynamic_cast<LinearAlgebra::PreconditionAMG *> (Mp_preconditioner.get());
-            Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1));
+            LinearAlgebra::PreconditionAMG::AdditionalData Amg_data_MP;
+            Amg_data_MP.elliptic = true;
+            Amg_data_MP.higher_order_elements = true;
+            Amg_data_MP.smoother_type = parameters.AMG_smoother_type.c_str();
+            Amg_data_MP.smoother_sweeps = parameters.AMG_smoother_sweeps;
+            Amg_data_MP.aggregation_threshold = parameters.AMG_aggregation_threshold;
+            Amg_data_MP.output_details = parameters.AMG_output_details;
+
+            Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data_MP);
           }
         else
           {
