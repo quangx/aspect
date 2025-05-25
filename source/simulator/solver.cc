@@ -27,7 +27,9 @@
 #include <aspect/simulator/solver/stokes_direct.h>
 #include <aspect/mesh_deformation/interface.h>
 
+#include <deal.II/base/mpi.h>
 #include <deal.II/base/signaling_nan.h>
+#include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/solver_bicgstab.h>
 #include <deal.II/lac/solver_cg.h>
@@ -205,7 +207,8 @@ namespace aspect
                      const PreconditionerMp &mp_preconditioner,
                      const double solver_tolerance,
                      const LinearAlgebra::Vector &inverse_lumped_mass_matrix,
-                     const LinearAlgebra::BlockSparseMatrix &system_matrix);
+                     const LinearAlgebra::BlockSparseMatrix &system_matrix,
+                     const LinearAlgebra::BlockSparseMatrix &system_preconditioner_matrix);
 
         void vmult(LinearAlgebra::Vector &dst,
                    const LinearAlgebra::Vector &src) const override;
@@ -219,6 +222,7 @@ namespace aspect
         const double solver_tolerance;
         const LinearAlgebra::Vector &inverse_lumped_mass_matrix;
         const LinearAlgebra::BlockSparseMatrix &system_matrix;
+        const LinearAlgebra::BlockSparseMatrix &system_preconditioner_matrix;
     };
 
     template <class PreconditionerMp>
@@ -227,13 +231,15 @@ namespace aspect
       const PreconditionerMp &mp_preconditioner,
       const double solver_tolerance,
       const LinearAlgebra::Vector &inverse_lumped_mass_matrix,
-      const LinearAlgebra::BlockSparseMatrix &system_matrix)
+      const LinearAlgebra::BlockSparseMatrix &system_matrix,
+      const LinearAlgebra::BlockSparseMatrix &system_preconditioner_matrix)
       : n_iterations_ (0),
         mp_matrix (mp_matrix),
         mp_preconditioner (mp_preconditioner),
         solver_tolerance (solver_tolerance),
         inverse_lumped_mass_matrix(inverse_lumped_mass_matrix),
-        system_matrix (system_matrix)
+        system_matrix (system_matrix),
+        system_preconditioner_matrix(system_preconditioner_matrix)
     {}
 
 
@@ -247,17 +253,24 @@ namespace aspect
 
       try
         {
+
           LinearAlgebra::Vector utmp;
           utmp.reinit(inverse_lumped_mass_matrix);
           LinearAlgebra::Vector ptmp;
           ptmp.reinit(src);
           LinearAlgebra::Vector wtmp;
           wtmp.reinit(inverse_lumped_mass_matrix);
+
+
+          LinearAlgebra::SparseMatrix BC_inv_BT;
+          system_matrix.block(1,0).mmult(BC_inv_BT,system_matrix.block(0,1),inverse_lumped_mass_matrix);
+
+
           {
             SolverControl solver_control(5000, 1e-6 * src.l2_norm(), false, true);
             SolverCG<LinearAlgebra::Vector> solver(solver_control);
-            //Solve with Schur Complement approximation
-            solver.solve(mp_matrix,
+            //Solve with Schur Complement approximation. system_preconditioner_matrix.block(1,1) contains BC^{-1}B^T with C=diag_A
+            solver.solve(system_preconditioner_matrix.block(1,1),
                          ptmp,
                          src,
                          mp_preconditioner);
@@ -270,7 +283,7 @@ namespace aspect
             system_matrix.block(1,0).vmult(ptmp,wtmp);
 
             dst=0;
-            solver.solve(mp_matrix,
+            solver.solve(system_preconditioner_matrix.block(1,1),
                          dst,
                          ptmp,
                          mp_preconditioner);
@@ -778,7 +791,8 @@ namespace aspect
                       *Mp_preconditioner,
                       parameters.linear_solver_S_block_tolerance,
                       inverse_lumped_mass_matrix.block(velocity_block_index),
-                      system_matrix);
+                      system_matrix,
+                      system_preconditioner_matrix);
           }
         else
           {

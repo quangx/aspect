@@ -34,6 +34,7 @@
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 
 #include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/template_constraints.h>
 #include <deal.II/base/work_stream.h>
 #include <deal.II/base/signaling_nan.h>
 #include <deal.II/lac/full_matrix.h>
@@ -42,6 +43,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/lac/vector_operation.h>
 
 
 
@@ -432,22 +434,33 @@ namespace aspect
          StokesPreconditioner<dim> (stokes_dofs_per_cell));
 
     system_preconditioner_matrix.compress(VectorOperation::add);
+    // if (parameters.use_bfbt)
+    //   {
+    //     inverse_lumped_mass_matrix.compress(VectorOperation::add);
+    //     IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
+    //     for (auto i: local_indices)
+    //       {
+    //         if (current_constraints.is_constrained(i))
+    //           {
+    //             inverse_lumped_mass_matrix.block(0)[i] = 1.0;
+    //           }
+    //         else
+    //           {
+    //             inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
+    //           }
+    //       }
+    //     inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
+    //   }
     if (parameters.use_bfbt)
       {
-        inverse_lumped_mass_matrix.compress(VectorOperation::add);
-        IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
+        IndexSet local_indices=inverse_lumped_mass_matrix.block(0).locally_owned_elements();
         for (auto i: local_indices)
           {
-            if (current_constraints.is_constrained(i))
-              {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0;
-              }
-            else
-              {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
-              }
+            inverse_lumped_mass_matrix.block(0)[i]=1.0/(system_matrix.block(0,0).diag_element(i));
           }
         inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
+        const dealii::TrilinosWrappers::MPI::Vector diag_A(inverse_lumped_mass_matrix.block(0));
+        system_matrix.block(1,0).mmult(system_preconditioner_matrix.block(1,1),system_matrix.block(0,1),diag_A);
       }
 
   }
