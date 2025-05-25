@@ -42,6 +42,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/lac/vector_operation.h>
 
 
 
@@ -417,23 +418,31 @@ namespace aspect
          StokesPreconditioner<dim> (stokes_dofs_per_cell));
 
     system_preconditioner_matrix.compress(VectorOperation::add);
-    if (parameters.use_bfbt)
-      {
-        inverse_lumped_mass_matrix.compress(VectorOperation::add);
-        IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
-        for (auto i: local_indices)
-          {
-            if (current_constraints.is_constrained(i))
-              {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0;
-              }
-            else
-              {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
-              }
-          }
-        inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
+    // if (parameters.use_bfbt)
+    //   {
+    //     inverse_lumped_mass_matrix.compress(VectorOperation::add);
+    //     IndexSet local_indices = inverse_lumped_mass_matrix.block(0).locally_owned_elements();
+    //     for (auto i: local_indices)
+    //       {
+    //         if (current_constraints.is_constrained(i))
+    //           {
+    //             inverse_lumped_mass_matrix.block(0)[i] = 1.0;
+    //           }
+    //         else
+    //           {
+    //             inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
+    //           }
+    //       }
+    //     inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
+    //   }
+    if (parameters.use_bfbt){
+      IndexSet local_indices=inverse_lumped_mass_matrix.block(0).locally_owned_elements();
+      inverse_lumped_mass_matrix.compress(VectorOperation::add);
+      for(auto i: local_indices){
+        inverse_lumped_mass_matrix.block(0)[i]=system_matrix.block(0,0).diag_element(i);
       }
+      inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
+    }
 
   }
 
