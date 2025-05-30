@@ -458,10 +458,11 @@ namespace aspect
             SolverControl solver_control(5000, 1e-6 * src.l2_norm(), false, true);
             SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
             //Solve with Schur Complement approximation
-            solver.solve(mp_matrix,
-                         ptmp,
-                         src,
-                         mp_preconditioner);
+            // solver.solve(mp_matrix,
+            //              ptmp,
+            //              src,
+            //              mp_preconditioner);
+            mp_preconditioner.vmult(ptmp,src);
             n_iterations_ += solver_control.last_step();
             system_matrix.block(0,1).vmult(utmp,ptmp);
 
@@ -471,10 +472,11 @@ namespace aspect
             system_matrix.block(1,0).vmult(ptmp,wtmp);
 
             dst=0;
-            solver.solve(mp_matrix,
-                         dst,
-                         ptmp,
-                         mp_preconditioner);
+            mp_preconditioner.vmult(dst,ptmp);
+            // solver.solve(mp_matrix,
+            //              dst,
+            //              ptmp,
+            //              mp_preconditioner);
             n_iterations_ += solver_control.last_step();
           }
         }
