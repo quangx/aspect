@@ -1,9 +1,9 @@
 #!/bin/bash
 
-for averaging in none "harmonic average"; do # arithmetic/geometric/harmonic average
-  for nsinkers in 1 4 8 12 16 ; do
-    for viscosity in 1e1 1e3 1e5 1e7; do
-      for refinement in 3  4 5 6 ; do
+for averaging in none; do # arithmetic/geometric/harmonic average
+  for nsinkers in 4 8 16; do
+    for viscosity in 1e1 1e3 1e5 1e7 ; do
+      for refinement in   4 5 6 ; do
         echo "subsection Material model" > current.prm
         echo "  set Material averaging = $averaging" >> current.prm
         echo "  subsection NSinker" >> current.prm
@@ -16,6 +16,8 @@ for averaging in none "harmonic average"; do # arithmetic/geometric/harmonic ave
 			echo "set Stokes solver type= block AMG">>current.prm
 			echo "set Use full A block as preconditioner=true">>current.prm
 			echo "set Use weighted BFBT for Schur complement=true">>current.prm
+			echo "set Number of cheap Stokes solver steps=500">>current.prm
+			echo "set Maximum number of expensive Stokes solver steps=0">>current.prm
 		echo "end">>current.prm
         echo "subsection AMG parameters">>current.prm
 		echo "set AMG aggregation threshold = 0.02">>current.prm
@@ -29,9 +31,9 @@ for averaging in none "harmonic average"; do # arithmetic/geometric/harmonic ave
 	echo "end">>current.prm
 
 	current_model="averaging${averaging}_nsinkers${nsinkers}_viscosity${viscosity}_refinement${refinement}"
-        echo "set Output directory = output-${current_model}" >> current.prm
+        echo "set Output directory = /home/qxhoang/aspect/benchmarks/nsinker/correct_pressure_scaling_and_ns_removal/output-${current_model}" >> current.prm
         echo "Starting ${current_model}"
-        cat nsinker.prm current.prm | mpirun -np 8 ./aspect-release --
+        cat nsinker.prm current.prm | mpirun -np 32 ./aspect-release --
       done
     done
   done
