@@ -21,14 +21,14 @@ form
 $B^T$ comes from integrating 
 grad on pressure space by parts after
 testing with $v$, and $B$ comes from
-integrading div $u$ by parts after testing
+integrating div $u$ by parts after testing
 with $q$.
 
 
 We have a right preconditioner of the form
 ```{math}
 :label: eq:aligned
-    P^{-1}=\begin{pmatrix}
+    P^{-1}&=\begin{pmatrix}
     A^{-1} & A^{-1}B^TS^{-1} \\
     0      & -S^{-1}
     \end{pmatrix}
