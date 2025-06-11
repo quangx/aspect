@@ -38,4 +38,6 @@ The motivation for this is that
     \end{pmatrix}
 ]
 
-This allows us
+Notice that in the top left block $AA^{-1}=I$ and in the bottom right block $BA^{-1}B^TS^{-1} - 
+we want to choose $S$ such that $S^{-1} \approx BA^{-1}B^T$. Note that 
+this $BA^{-1}B^T$ is often referred to as the Schur Complement.
