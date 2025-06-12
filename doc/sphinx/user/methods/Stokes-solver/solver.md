@@ -19,7 +19,8 @@ viscosity and $\Omega$ is our domain. Of
 course, $x \in Omega$. Of course,
 we must discretize the problem
 and will not do so from the strong form 
-of the Stokes problem provided above.
+of the Stokes problem provided above. This derivation
+can be found in step-22 of deal.II.
 
 To derive the weak form, 
 let $u \in V_g:=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_d}=g_d}$,
