@@ -44,6 +44,19 @@ However, how is one to normalize the equations if, as is the case in the Earth's
 In cases like these, one has to choose a reference viscosity, density, etc.
 While the resulting non-dimensionalization retains the universality of parameters in the equations, as discussed above, it is not entirely clear that this would also retain the numerical stability if the reference values are poorly chosen.
 
+-  Another consideration from a mathematical 
+viewpoint is convergence of the iterative solver.
+FGMRES, for instance, seeks to reduce
+residuals below a certain tolerance.
+However, since the velocity and pressure
+block have different units, the residual
+calculation will likely cause one 
+of the equations in the Stokes system
+to not be enforced. For this reason,
+ASPECT introduces a presssure scaling factor,
+which is calculated by dividing a reference
+viscosity by the length scale.
+
 As a consequence of such considerations, most codes in the past have used non-dimensionalized models.
 This was aided by the fact that until recently and with notable exceptions, many models had constant coefficients and the difficulties associated with variable coefficients were not a concern.
 On the other hand, our goal with ASPECT is for it to be a code that solves realistic problems using complex models and that is easy to use.
