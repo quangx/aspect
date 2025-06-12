@@ -14,10 +14,10 @@ form
     \begin{pmatrix}
     f \\
     0
-    \end{pmatrix}
+    \end{pmatrix}.
 ```
 
-. Here, $A$ is the viscous stress matrix,
+Here, $A$ is the viscous stress matrix,
 $B^T$ comes from integrating 
 grad on pressure space by parts after
 testing with $v$, and $B$ comes from
@@ -31,9 +31,9 @@ We have a right preconditioner of the form
     P^{-1}&=\begin{pmatrix}
     A^{-1} & A^{-1}B^TS^{-1} \\
     0      & -S^{-1}
-    \end{pmatrix}
+    \end{pmatrix}.
 ```
-.
+
 
 The motivation for this is that
 
@@ -42,15 +42,10 @@ The motivation for this is that
     MP^{-1}&= \begin{pmatrix}
     AA^{-1} & B^TS^{-1}-B^TS^{-1 } \\
     BA^{-1} & BA^{-1}B^TS^{-1}
-    \end{pmatrix} \\
-    &\approx
-    \begin{pmatrix}
-    I & 0 \\
-    BA^{-1} & I
-    \end{pmatrix}
-```.
+    \end{pmatrix} .
+```
 
-Notice that in the top left block $AA^{-1}=I$ and in the bottom right block $BA^{-1}B^TS^{-1} - 
+Notice that in the top left block $AA^{-1}=I$ and in the bottom right block $BA^{-1}B^TS^{-1}$ - 
 we want to choose $S$ such that $S^{-1} \approx BA^{-1}B^T$. Note that 
 this $BA^{-1}B^T$ is often referred to as the Schur Complement.
 
