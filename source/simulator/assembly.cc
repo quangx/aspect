@@ -425,11 +425,11 @@ namespace aspect
           {
             if (current_constraints.is_constrained(i))
               {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0;
+                inverse_lumped_mass_matrix.block(0)[i] = -1.0;
               }
             else
               {
-                inverse_lumped_mass_matrix.block(0)[i] = 1.0/inverse_lumped_mass_matrix.block(0)[i];
+                inverse_lumped_mass_matrix.block(0)[i] = -1.0/inverse_lumped_mass_matrix.block(0)[i];
               }
           }
         inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
