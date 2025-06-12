@@ -1,7 +1,48 @@
 #Solver
 
-The Stokes system we are solving is of the
-form
+
+
+Problems in ASPECT require solving the Stokes
+problem below for velocity $u$ and pressure
+$p$
+
+```{math}
+:label: eq:aligned
+-\nabla \cdot (2 \eta(x)\varepsilon(u))+\nabla p &= f \quad \text{ in } \Omega \\
+\nabla \cdot u&=0 \quad\text \in \Omega
+```
+
+with $u=g_D$ on $\Gamma_d$ and
+$n \cdot (pI-2\varepsilon(u))=g_N$ on 
+$\Gamma_N$. Here, $\eta(x)$ is our
+viscosity and $\Omega$ is our domain. Of
+course, $x \in Omega$. Of course,
+we must discretize the problem
+and will not do so from the strong form 
+of the Stokes problem provided above.
+
+To derive the weak form, 
+let $u \in V_g:=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_d}=g_d}$,
+$v \in V_0=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_d}=0\}. We call $V_g$ the solution
+space and $V_0$ the test space.
+
+Multiplying the first equation in the strong form by $v \in V_0$ and integrating by parts:
+
+```{math}
+:label: eq:aligned
+(-\nabla \cdot (2 \eta(x)\varepsilon(u)),v)+(\nabla p,v)&=
+(2\eta(x)\varepsilon(u),\nabla v)-(n \otimes v,2\eta(x)\varepsilon(u))_{d\Omega}-(p,\nabla \cdot v)
++(n \cdot v,p)_{d\Omega}\\
+&=(2\eta(x)\varepsilon(u),\varepsilon(v))-(p,\nabla \cdot v)+(v,n \cdot (pI-2\varepsilon(u))_{\Gamma_n})\\
+&=(f,v)
+```
+
+where we use that $(n \otimes v,2\eta(x)\varepsilon(u))_{\Gamma_d}+(n\cdot v,p)_{\Gamma_d}=0$
+due to the definition of $V_0$, and the observation that
+$(2\eta(x)\varepsilon(u),\nabla v)=(2\eta(x)\varepsilon(u),\varepsilon(v))$.
+
+
+
 
 ```{math}
 :label: eq:aligned
@@ -29,7 +70,7 @@ We have a right preconditioner of the form
 ```{math}
 :label: eq:aligned
     P^{-1}&=\begin{pmatrix}
-    A^{-1} & A^{-1}B^TS^{-1} \\
+    \widetilde{A}^{-1} & \widetilde{A}^{-1}B^TS^{-1} \\
     0      & -S^{-1}
     \end{pmatrix}.
 ```
@@ -40,14 +81,15 @@ The motivation for this is that
 ```{math}
     :label: eq:aligned
     MP^{-1}&= \begin{pmatrix}
-    AA^{-1} & B^TS^{-1}-B^TS^{-1 } \\
+    A\widetilde{A}^{-1} & 0 \\
     BA^{-1} & BA^{-1}B^TS^{-1}
     \end{pmatrix} .
 ```
 
-Notice that in the top left block $AA^{-1}=I$ and in the bottom right block $BA^{-1}B^TS^{-1}$ - 
-we want to choose $S$ such that $S^{-1} \approx BA^{-1}B^T$. Note that 
-this $BA^{-1}B^T$ is often referred to as the Schur Complement.
+Notice we have $A\widetilde{A}^{-1}$ in the top left block and  $BA^{-1}B^TS^{-1}$ in the bottom right block - 
+we want to choose $S$ such that $S^{-1} \approx (BA^{-1}B^T)^{-1}$. Note that 
+this $BA^{-1}B^T$ is often referred to as the negative Schur Complement, so we want $S^{-1}$ to serve
+as the negative Schur Complement inverse.
 
 Pressure Scaling: ASPECT uses dimensionalized units
 and a pressure scaling factor is required in
@@ -70,12 +112,23 @@ We must note that the $U$ block corresponding to velocity and
 $P$ block corresponding to pressure will 
 have different units, and this generally leads 
 to one of the equations,
-likely $\text{div}\mathbf{u}=0$ not being enforced.
+likely $\text{div}\mathbf{u}=0$, not being
+enforced. This is because the 
+two equations have vastly different
+numerical values, meaning
+one will contribute to the residual
+significantly more than the other.
 
-In particular, the residual of the first block
+
+For instance, assume the residual of the first block
 has associated units $\frac{Pa}{m} m^{\text{dim}}$
 where $Pa=\frac{kg}{ms^2}$
-and the second block has units $\frac{m^{\text{dim}}}{s}$.
+and the residual of the
+second block has units $\frac{m^{\text{dim}}}{s}$.
+Then the norm of the residual
+vector has units 
+$m^{\text{dim}-1}\sqrt{(Pa)^2+(\frac{m}{s})^2}$.
+
 
 
 To remedy this, we recall our Stokes system of the form
@@ -95,7 +148,7 @@ We introduce the pressure scaling $\lambda:=\frac{\eta}{L}$ and scale $\nabla \c
 where $L$ is determined by length scale and computed reference viscosity.
 
 However, notice that this destroys the symmetry we have in our block Stokes matrix
-with the $B$ block. To remedy this, let $\widehat{p}=\lambda^{-1}p$ \cite{2024:africa.arndt.ea:deal}\cite{kronbichler:etal:2012}.
+with the $B$ block. To remedy this, let $\widehat{p}=\lambda^{-1}p$ \cite{kronbichler:etal:2012}.
 Then we can rewrite our system as 
 
 ```{math}
