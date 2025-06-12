@@ -97,9 +97,7 @@ We introduce the pressure scaling $\lambda:=\frac{\eta}{L}$ and scale $\nabla \c
  \lambda \nabla \cdot u =0,
 ```
 
-where $L$ is determined by a variety of 
-factors (size of domain,
-viscosity contrasts,etc).
+where $L$ is determined by length scale and computed reference viscosity.
 
 However, notice that this destroys the symmetry we have in our block Stokes matrix
 with the $B$ block. To remedy this, let $\widehat{p}=\lambda^{-1}p$ \cite{2024:africa.arndt.ea:deal}\cite{kronbichler:etal:2012}.
