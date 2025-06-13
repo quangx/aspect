@@ -4,7 +4,7 @@
 # It is a quarter of a spherical shell and uses periodic boundary conditions.
 
 set Dimension                              = 2
-set End time                               = 3e8
+set End time                               = 0
 set Adiabatic surface temperature          = 1613.0
 set Output directory                       = output-steinberger
 
@@ -22,10 +22,14 @@ subsection Geometry model
 
   subsection Spherical shell
     set Inner radius  = 3481000
-    set Opening angle = 90
+    set Opening angle = 360
     set Outer radius  = 6371000
-    set Phi periodic = true
+    set Phi periodic = false
   end
+end
+
+subsection Discretization
+   set Use locally conservative discretization = false
 end
 
 # Both the top and bottom boundaries allow for free slip.
@@ -204,8 +208,14 @@ end
 # it is quicker than the expensive solver.
 subsection Solver parameters
   subsection Stokes solver parameters
+    set Stokes solver type = block AMG
     set GMRES solver restart length = 200
     set Number of cheap Stokes solver steps = 500
+    set Use full A block as preconditioner = true
+    set Use weighted BFBT for Schur complement = true
+  end
+  subsection AMG parameters
+     set AMG aggregation threshold = 0.02
   end
 end
 

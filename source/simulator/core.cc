@@ -829,7 +829,7 @@ namespace aspect
     //for (int b=0;b<2;++b)
     VectorTools::interpolate_boundary_values (*mapping,
                                               dof_handler,
-                                              0, // top boundary
+                                              3, // top boundary
                                               Functions::ZeroFunction<dim>(introspection.n_components),
                                               current_constraints_prec,
                                               introspection.component_masks.pressure);
