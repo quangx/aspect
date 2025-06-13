@@ -12,19 +12,19 @@ $p$
 \nabla \cdot u&=0 \quad\text \in \Omega
 ```
 
-with $u=g_D$ on $\Gamma_d$ and
+with $u=g_D$ on $\Gamma_D$ and
 $n \cdot (pI-2\varepsilon(u))=g_N$ on 
 $\Gamma_N$. Here, $\eta(x)$ is our
 viscosity and $\Omega$ is our domain. Of
-course, $x \in Omega$. Of course,
+course, $x \in \Omega$. Of course,
 we must discretize the problem
 and will not do so from the strong form 
 of the Stokes problem provided above. This derivation
 can be found in step-22 of deal.II.
 
 To derive the weak form, 
-let $u \in V_g:=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_d}=g_d}$,
-$v \in V_0=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_d}=0\}. We call $V_g$ the solution
+let $u \in V_g:=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_D}=g_d\}$,
+$v \in V_0=\{\phi \in H^1(\Omega)^d: \phi_{\Gamma_D}=0\}. We call $V_g$ the solution
 space and $V_0$ the test space.
 
 Multiplying the first equation in the strong form by $v \in V_0$ and integrating by parts:
@@ -34,13 +34,32 @@ Multiplying the first equation in the strong form by $v \in V_0$ and integrating
 (-\nabla \cdot (2 \eta(x)\varepsilon(u)),v)+(\nabla p,v)&=
 (2\eta(x)\varepsilon(u),\nabla v)-(n \otimes v,2\eta(x)\varepsilon(u))_{d\Omega}-(p,\nabla \cdot v)
 +(n \cdot v,p)_{d\Omega}\\
-&=(2\eta(x)\varepsilon(u),\varepsilon(v))-(p,\nabla \cdot v)+(v,n \cdot (pI-2\varepsilon(u))_{\Gamma_n})\\
-&=(f,v)
+&=(2\eta(x)\varepsilon(u),\varepsilon(v))-(p,\nabla \cdot v)+(v,n \cdot (pI-2\varepsilon(u))_{\Gamma_N})\\
+&=(f,v),
 ```
 
-where we use that $(n \otimes v,2\eta(x)\varepsilon(u))_{\Gamma_d}+(n\cdot v,p)_{\Gamma_d}=0$
+where we use that $(n \otimes v,2\eta(x)\varepsilon(u))_{\Gamma_D}+(n\cdot v,p)_{\Gamma_D}=0$
 due to the definition of $V_0$, and the observation that
 $(2\eta(x)\varepsilon(u),\nabla v)=(2\eta(x)\varepsilon(u),\varepsilon(v))$.
+
+Of course the $\nabla \cdot u =0$ must also be addressed. Multiplying by $q \in Q=L^2$,
+we get $(q,\nabla \cdot u)=0$.
+
+Combining these two results,
+we have the weak form
+
+```{math}
+:label: eq:aligned
+(\varepsilon(v),2\varepsilon(u))-(\nabla \cdot v,p)
+-(q,\nabla \cdot u)=(v,f)-(v,g_N)_{\Gamma_N}
+```
+where we apply the Neumann boundary
+condition to get the $(v,g_N)_{\Gamma_N}$ term.
+
+Of course, we must discretize this weak form.
+To do so, care has to be 
+taken in order to guarantee
+the existence of a unique solution.
 
 
 
