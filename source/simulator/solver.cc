@@ -389,7 +389,7 @@ namespace aspect
         template<typename Range,
              typename Domain,
              typename Payload>
-    LinearOperator<Range, Domain, Payload> diag_operator(LinearOperator<Range,Domain,Payload> &exemplar,TrilinosWrappers::MPI::Vector &diagonal)
+    LinearOperator<Range, Domain, Payload> diag_operator(LinearOperator<Range,Domain,Payload> &exemplar, const TrilinosWrappers::MPI::Vector &diagonal)
     {
       LinearOperator<Range, Domain, Payload> return_op;
 
