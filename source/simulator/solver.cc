@@ -167,7 +167,7 @@ namespace aspect
 
       return dst.l2_norm();
     }
- 
+
 
 
 
@@ -386,7 +386,7 @@ namespace aspect
         virtual unsigned int n_iterations() const=0;
 
     };
-        template<typename Range,
+    template<typename Range,
              typename Domain,
              typename Payload>
     LinearOperator<Range, Domain, Payload> diag_operator(LinearOperator<Range,Domain,Payload> &exemplar, const TrilinosWrappers::MPI::Vector &diagonal)
