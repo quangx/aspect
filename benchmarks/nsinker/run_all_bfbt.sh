@@ -31,7 +31,7 @@ for averaging in none; do # arithmetic/geometric/harmonic average
 	echo "end">>current.prm
 
 	current_model="averaging${averaging}_nsinkers${nsinkers}_viscosity${viscosity}_refinement${refinement}"
-        echo "set Output directory = /home/qxhoang/aspect/benchmarks/nsinker/correct_pressure_scaling_and_ns_removal/output-${current_model}" >> current.prm
+        echo "set Output directory = /home/qxhoang/aspect/benchmarks/nsinker/bfbt_v3_runs/output-${current_model}" >> current.prm
         echo "Starting ${current_model}"
         cat nsinker.prm current.prm | mpirun -np 32 ./aspect-release --
       done
