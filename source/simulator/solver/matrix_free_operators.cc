@@ -358,6 +358,150 @@ namespace aspect
   }
 
   template <int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
+  ::local_apply (const dealii::MatrixFree<dim, number>                         &data,
+                 dealii::LinearAlgebra::distributed::BlockVector<number>       &dst,
+                 const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                 const std::pair<unsigned int, unsigned int>                   &cell_range) const
+  {
+    FEEvaluation<dim,degree_v,degree_v+1,dim,number> u_eval(data, 0);
+    FEEvaluation<dim,degree_v-1,degree_v+1,1,number> p_eval(data, /*dofh*/1);
+
+    const bool use_viscosity_at_quadrature_points
+      = (cell_data->viscosity.size(1) == u_eval.n_q_points);
+
+    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
+      {
+        VectorizedArray<number> viscosity_x_2 = 2. * cell_data->viscosity(cell,0);
+
+        u_eval.reinit(cell);
+        u_eval.gather_evaluate(src.block(0), EvaluationFlags::gradients);
+
+        p_eval.reinit(cell);
+        p_eval.gather_evaluate(src.block(1), EvaluationFlags::values);
+
+        // Derivative terms related to the Newton solver
+        VectorizedArray<number> deta_deps_times_sym_grad_u(0.);
+        VectorizedArray<number> eps_times_sym_grad_u(0.);
+        VectorizedArray<number> deta_dp_times_p(0.);
+        if (cell_data->enable_newton_derivatives)
+          {
+            SymmetricTensor<2,dim,VectorizedArray<number>> sym_grad_u;
+            VectorizedArray<number> val_p;
+            for (const unsigned int q : u_eval.quadrature_point_indices())
+              {
+                sym_grad_u = u_eval.get_symmetric_gradient(q);
+                val_p      = p_eval.get_value(q);
+                deta_deps_times_sym_grad_u += cell_data->newton_factor_wrt_strain_rate_table(cell,q)
+                                              * sym_grad_u;
+                deta_dp_times_p += cell_data->newton_factor_wrt_pressure_table(cell,q) * val_p;
+                if (cell_data->symmetrize_newton_system)
+                  eps_times_sym_grad_u += cell_data->strain_rate_table(cell,q) * sym_grad_u;
+              }
+          }
+
+        for (const unsigned int q : u_eval.quadrature_point_indices())
+          {
+            // Only update the viscosity if a Q1 projection is used.
+            if (use_viscosity_at_quadrature_points)
+              viscosity_x_2 = 2. * cell_data->viscosity(cell,q);
+
+            const SymmetricTensor<2,dim,VectorizedArray<number>>
+            sym_grad_u = u_eval.get_symmetric_gradient(q);
+            const VectorizedArray<number> div_u = trace(sym_grad_u);
+            const VectorizedArray<number> val_p = p_eval.get_value(q);
+
+            // Terms to be tested by phi_p:
+            VectorizedArray<number> pressure_terms =
+              -cell_data->pressure_scaling * div_u;
+
+            if (cell_data->enable_prescribed_dilation)
+              pressure_terms -= cell_data->pressure_scaling *
+                                cell_data->pressure_scaling *
+                                cell_data->dilation_lhs_term_table(cell,q) *
+                                val_p;
+
+            // Terms to be tested by the symmetric gradients of phi_u:
+            SymmetricTensor<2,dim,VectorizedArray<number>>
+            velocity_terms = viscosity_x_2 * sym_grad_u;
+
+            for (unsigned int d=0; d<dim; ++d)
+              velocity_terms[d][d] -= cell_data->pressure_scaling * val_p;
+
+            if (cell_data->is_compressible ||
+                cell_data->enable_prescribed_dilation)
+              for (unsigned int d=0; d<dim; ++d)
+                velocity_terms[d][d] -= viscosity_x_2 / 3. * div_u;
+
+            // Add the Newton derivatives if required.
+            if (cell_data->enable_newton_derivatives)
+              {
+                velocity_terms +=
+                  ( cell_data->symmetrize_newton_system ?
+                    ( cell_data->strain_rate_table(cell,q) * deta_deps_times_sym_grad_u +
+                      cell_data->newton_factor_wrt_strain_rate_table(cell,q) * eps_times_sym_grad_u ) :
+                    2. * cell_data->strain_rate_table(cell,q) * deta_deps_times_sym_grad_u )
+                  +
+                  2. * cell_data->strain_rate_table(cell,q) * deta_dp_times_p;
+
+                if (cell_data->enable_prescribed_dilation)
+                  {
+                    pressure_terms += ( ( cell_data->dilation_derivative_wrt_strain_rate_table(cell,q)
+                                          * sym_grad_u )
+                                        +
+                                        ( cell_data->dilation_derivative_wrt_pressure_table(cell,q)
+                                          * cell_data->pressure_scaling * val_p )
+                                      )
+                                      * cell_data->pressure_scaling;
+                  }
+              }
+
+            u_eval.submit_symmetric_gradient(velocity_terms, q);
+            p_eval.submit_value(pressure_terms, q);
+          }
+
+        u_eval.integrate_scatter(EvaluationFlags::gradients, dst.block(0));
+        p_eval.integrate_scatter(EvaluationFlags::values, dst.block(1));
+      }
+  }
+
+
+
+  template <int dim, int degree_v, typename number>
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::BBlockOperator ()
+    :
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
+  {}
+
+  template <int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::clear ()
+  {
+    this->cell_data = nullptr;
+    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>::clear();
+  }
+
+  template <int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::
+  set_cell_data (const OperatorCellData<dim,number> &data)
+  {
+    this->cell_data = &data;
+  }
+
+  
+  template <int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
+  ::compute_diagonal ()
+  {
+    // There no need in the code for this diagonal.
+    Assert(false, ExcNotImplemented());
+  }
+  
+
+  template <int dim, int degree_v, typename number>
   MatrixFreeStokesOperators::BTBlockOperator<dim,degree_v,number>::BTBlockOperator ()
     :
     MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
@@ -808,6 +952,8 @@ namespace aspect
   template class MatrixFreeStokesOperators::ABlockOperator<dim,3,GMGNumberType>; \
   template class MatrixFreeStokesOperators::StokesOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>; \
+  template class MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType> \
+  template class MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumnerType> \
   template class MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>; \
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,1,GMGNumberType>; \

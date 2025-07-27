@@ -110,7 +110,8 @@ namespace aspect
     /**
      * Implement the block Schur preconditioner for the Stokes system.
      */
-    template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType,
+    template <class StokesMatrixType, class ABlockMatrixType, class BBlockOperatorType,
+              class BTBlockOperatorType,
               class SchurComplementMatrixType, class ABlockPreconditionerType,
               class SchurComplementPreconditionerType>
     class BlockSchurGMGPreconditioner : public Subscriptor
@@ -121,6 +122,7 @@ namespace aspect
         *
         * @param Stokes_matrix The entire Stokes matrix
         * @param A_block The A block of the Stokes matrix
+        * @param B_block The B block of the Stokes matrix
         * @param BT_block The B^T block of the Stokes matrix
         * @param Schur_complement_block The matrix which describes the Schur complement approximation
         * @param A_block_preconditioner Preconditioner object for the matrix A.
@@ -137,6 +139,7 @@ namespace aspect
         */
         BlockSchurGMGPreconditioner (const StokesMatrixType                  &Stokes_matrix,
                                      const ABlockMatrixType                  &A_block,
+                                     const BBlockOperatorType                &B_block,
                                      const BTBlockOperatorType               &BT_block,
                                      const SchurComplementMatrixType         &Schur_complement_block,
                                      const ABlockPreconditionerType          &A_block_preconditioner,
