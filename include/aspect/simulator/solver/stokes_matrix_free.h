@@ -166,6 +166,7 @@ namespace aspect
         */
         const StokesMatrixType                  &stokes_matrix;
         const ABlockMatrixType                  &A_block;
+        const BBlockOperatorType                &B_block;
         const BTBlockOperatorType               &BT_block;
         const SchurComplementMatrixType         &Schur_complement_block;
         const ABlockPreconditionerType          &A_block_preconditioner;
@@ -185,12 +186,13 @@ namespace aspect
         mutable dealii::LinearAlgebra::distributed::BlockVector<double> utmp;
     };
 
-    template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
+    template <class StokesMatrixType, class ABlockMatrixType, class BBlockOperatorType, class BTBlockOperatorType, class SchurComplementMatrixType,
               class ABlockPreconditionerType, class SchurComplementPreconditionerType>
-    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
+    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BBlockOperatorType,BTBlockOperatorType, SchurComplementMatrixType,
                                 ABlockPreconditionerType, SchurComplementPreconditionerType>::
                                 BlockSchurGMGPreconditioner (const StokesMatrixType                  &Stokes_matrix,
                                                              const ABlockMatrixType                  &A_block,
+                                                             const BBlockOperatorType                &B_block,
                                                              const BTBlockOperatorType               &BT_block,
                                                              const SchurComplementMatrixType         &Schur_complement_block,
                                                              const ABlockPreconditionerType          &A_block_preconditioner,
@@ -203,6 +205,7 @@ namespace aspect
                                   :
                                   stokes_matrix                   (Stokes_matrix),
                                   A_block                         (A_block),
+                                  B_block                        (B_block),
                                   BT_block                        (BT_block),
                                   Schur_complement_block          (Schur_complement_block),
                                   A_block_preconditioner          (A_block_preconditioner),
@@ -216,31 +219,32 @@ namespace aspect
                                   Schur_complement_tolerance      (Schur_complement_tolerance)
     {}
 
-    template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType,
+    template <class StokesMatrixType, class ABlockMatrixType, class BBlockOperatorType,
+            class BTBlockOperatorType,
               class SchurComplementMatrixType, class ABlockPreconditionerType,
               class SchurComplementPreconditionerType>
     unsigned int
-    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
+    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType,
                                 ABlockPreconditionerType, SchurComplementPreconditionerType>::
                                 n_iterations_A_block() const
     {
       return n_iterations_A_;
     }
 
-    template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
+    template <class StokesMatrixType, class ABlockMatrixType, class BBlockOperatorType,class BTBlockOperatorType, class SchurComplementMatrixType,
               class ABlockPreconditionerType, class SchurComplementPreconditionerType>
     unsigned int
-    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
+    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType,
                                 ABlockPreconditionerType, SchurComplementPreconditionerType>::
                                 n_iterations_Schur_complement() const
     {
       return n_iterations_Schur_complement_;
     }
 
-    template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
+    template <class StokesMatrixType, class ABlockMatrixType, class BBlockOperatorType, class BTBlockOperatorType, class SchurComplementMatrixType,
               class ABlockPreconditionerType, class SchurComplementPreconditionerType>
     void
-    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
+    BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BBlockOperatorType,BTBlockOperatorType, SchurComplementMatrixType,
                                 ABlockPreconditionerType, SchurComplementPreconditionerType>::
                                 vmult (dealii::LinearAlgebra::distributed::BlockVector<double>       &dst,
                                        const dealii::LinearAlgebra::distributed::BlockVector<double>  &src) const
