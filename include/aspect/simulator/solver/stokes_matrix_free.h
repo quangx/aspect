@@ -112,7 +112,8 @@ namespace aspect
      */
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType,
               class SchurComplementMatrixType, class ABlockPreconditionerType,
-              class SchurComplementPreconditionerType>
+              class SchurComplementPreconditionerType,
+              class VectorType>
     class BlockSchurGMGPreconditioner : public Subscriptor
     {
       public:
@@ -141,6 +142,7 @@ namespace aspect
                                      const SchurComplementMatrixType         &Schur_complement_block,
                                      const ABlockPreconditionerType          &A_block_preconditioner,
                                      const SchurComplementPreconditionerType &Schur_complement_preconditioner,
+                                     const VectorType                        &vector_type,
                                      const bool                               do_solve_A,
                                      const bool                               do_solve_Schur_complement,
                                      const bool                               A_block_is_symmetric,
@@ -167,6 +169,7 @@ namespace aspect
         const SchurComplementMatrixType         &Schur_complement_block;
         const ABlockPreconditionerType          &A_block_preconditioner;
         const SchurComplementPreconditionerType &Schur_complement_preconditioner;
+        const VectorType                        &vector_type;
 
         /**
         * Whether to actually invert the $\tilde M$ or $\tilde A$ of the preconditioner matrix
@@ -183,15 +186,16 @@ namespace aspect
     };
 
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
-              class ABlockPreconditionerType, class SchurComplementPreconditionerType>
+              class ABlockPreconditionerType, class SchurComplementPreconditionerType, class VectorType>
     BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
-                                ABlockPreconditionerType, SchurComplementPreconditionerType>::
+                                ABlockPreconditionerType, SchurComplementPreconditionerType,VectorType>::
                                 BlockSchurGMGPreconditioner (const StokesMatrixType                  &Stokes_matrix,
                                                              const ABlockMatrixType                  &A_block,
                                                              const BTBlockOperatorType               &BT_block,
                                                              const SchurComplementMatrixType         &Schur_complement_block,
                                                              const ABlockPreconditionerType          &A_block_preconditioner,
                                                              const SchurComplementPreconditionerType &Schur_complement_preconditioner,
+                                                             const VectorType                        &vector_type,
                                                              const bool                               do_solve_A,
                                                              const bool                               do_solve_Schur_complement,
                                                              const bool                               A_block_symmetric,
@@ -204,6 +208,7 @@ namespace aspect
                                   Schur_complement_block          (Schur_complement_block),
                                   A_block_preconditioner          (A_block_preconditioner),
                                   Schur_complement_preconditioner (Schur_complement_preconditioner),
+                                  vector_type                     (vector_type),
                                   do_solve_A                      (do_solve_A),
                                   do_solve_Schur_complement       (do_solve_Schur_complement),
                                   A_block_is_symmetric            (A_block_symmetric),
@@ -215,30 +220,32 @@ namespace aspect
 
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType,
               class SchurComplementMatrixType, class ABlockPreconditionerType,
-              class SchurComplementPreconditionerType>
+              class SchurComplementPreconditionerType,
+              class VectorType>
     unsigned int
     BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
-                                ABlockPreconditionerType, SchurComplementPreconditionerType>::
+                                ABlockPreconditionerType, SchurComplementPreconditionerType,
+                                VectorType>::
                                 n_iterations_A_block() const
     {
       return n_iterations_A_;
     }
 
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
-              class ABlockPreconditionerType, class SchurComplementPreconditionerType>
+              class ABlockPreconditionerType, class SchurComplementPreconditionerType,class VectorType>
     unsigned int
     BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
-                                ABlockPreconditionerType, SchurComplementPreconditionerType>::
+                                ABlockPreconditionerType, SchurComplementPreconditionerType,VectorType>::
                                 n_iterations_Schur_complement() const
     {
       return n_iterations_Schur_complement_;
     }
 
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
-              class ABlockPreconditionerType, class SchurComplementPreconditionerType>
+              class ABlockPreconditionerType, class SchurComplementPreconditionerType, class VectorType>
     void
     BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
-                                ABlockPreconditionerType, SchurComplementPreconditionerType>::
+                                ABlockPreconditionerType, SchurComplementPreconditionerType, VectorType>::
                                 vmult (dealii::LinearAlgebra::distributed::BlockVector<double>       &dst,
                                        const dealii::LinearAlgebra::distributed::BlockVector<double>  &src) const
     {

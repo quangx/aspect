@@ -25,6 +25,8 @@
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
+#include <deal.II/lac/la_parallel_block_vector.h>
+#include <deal.II/lac/la_vector.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -214,11 +216,13 @@ namespace aspect
       using BTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
+      using VectorType = const dealii::LinearAlgebra::distributed::Vector<double>;
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
+      VectorType vector_type;
 
       AffineConstraints<double> constraints_v;
       AffineConstraints<double> constraints_p;

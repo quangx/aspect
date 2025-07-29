@@ -1205,9 +1205,10 @@ namespace aspect
     solver_control_expensive.enable_history_data();
 
     // create a cheap preconditioner that consists of only a single V-cycle
-    const internal::BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType,SchurComplementMatrixType, GMGPreconditioner, GMGPreconditioner>
+    const internal::BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType,SchurComplementMatrixType, GMGPreconditioner, GMGPreconditioner, VectorType>
     preconditioner_cheap (stokes_matrix, A_block_matrix, BT_block, Schur_complement_block_matrix,
                           prec_A, prec_Schur,
+                          vector_type,
                           /*do_solve_A*/false,
                           /*do_solve_Schur*/false,
                           sim.stokes_A_block_is_symmetric(),
@@ -1215,10 +1216,10 @@ namespace aspect
                           this->get_parameters().linear_solver_S_block_tolerance);
 
     // create an expensive preconditioner that solves for the A block with CG
-    const internal::BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType, GMGPreconditioner, GMGPreconditioner>
+    const internal::BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType, GMGPreconditioner, GMGPreconditioner,VectorType>
     preconditioner_expensive (stokes_matrix, A_block_matrix, BT_block,
                               Schur_complement_block_matrix,
-                              prec_A, prec_Schur,
+                              prec_A, prec_Schur,vector_type,
                               /*do_solve_A*/true,
                               /*do_solve_Schur*/true,
                               sim.stokes_A_block_is_symmetric(),
