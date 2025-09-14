@@ -290,7 +290,7 @@ namespace aspect
       return n_iterations_;
     }
 
-    
+
 
     /**
      * This class approximates the Schur Complement inverse operator
@@ -351,7 +351,7 @@ namespace aspect
 
     template <class PreconditionerMp,class VectorType>
     void WeightedBFBT<PreconditionerMp,VectorType>::vmult(TrilinosWrappers::MPI::Vector &dst,
-                                               const TrilinosWrappers::MPI::Vector &src) const
+                                                          const TrilinosWrappers::MPI::Vector &src) const
     {
       SolverControl solver_control(1000, src.l2_norm() * solver_tolerance);
       PrimitiveVectorMemory<LinearAlgebra::Vector> mem;
@@ -462,7 +462,7 @@ namespace aspect
 
     template <class PreconditionerMp, class VectorType>
     void InverseWeightedMassMatrix<PreconditionerMp,VectorType>::vmult(TrilinosWrappers::MPI::Vector &dst,
-                                                            const TrilinosWrappers::MPI::Vector &src) const
+                                                                       const TrilinosWrappers::MPI::Vector &src) const
     {
       // Trilinos reports a breakdown in case src=dst=0, even though it should return
       // convergence without iterating. We simply skip solving in this case.
