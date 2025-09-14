@@ -26,6 +26,20 @@ namespace aspect
   namespace internal
   {
     /**
+     * Base class for Schur Complement operators.
+     */
+    template<class VectorType>
+    class SchurComplementOperator
+    {
+      public:
+        virtual ~SchurComplementOperator() = default;
+
+        virtual void vmult(VectorType &dst,
+                           const VectorType &src) const=0;
+        virtual unsigned int n_iterations() const=0;
+
+    };
+    /**
      * Implement the block Schur preconditioner
      * (A B^T; 0 S)^{-1}.
      */
