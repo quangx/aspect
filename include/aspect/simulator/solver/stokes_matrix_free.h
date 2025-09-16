@@ -182,6 +182,8 @@ namespace aspect
         mutable dealii::LinearAlgebra::distributed::BlockVector<double> utmp;
     };
 
+    
+
     template <class StokesMatrixType, class ABlockMatrixType, class BTBlockOperatorType, class SchurComplementMatrixType,
               class ABlockPreconditionerType, class SchurComplementPreconditionerType>
     BlockSchurGMGPreconditioner<StokesMatrixType, ABlockMatrixType, BTBlockOperatorType, SchurComplementMatrixType,
