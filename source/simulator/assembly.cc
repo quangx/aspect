@@ -459,8 +459,8 @@ namespace aspect
             inverse_lumped_mass_matrix.block(0)[i]=1.0/(system_matrix.block(0,0).diag_element(i));
           }
         inverse_lumped_mass_matrix.block(0).compress(VectorOperation::insert);
-        const dealii::TrilinosWrappers::MPI::Vector diag_A(inverse_lumped_mass_matrix.block(0));
-        system_matrix.block(1,0).mmult(system_preconditioner_matrix.block(1,1),system_matrix.block(0,1),diag_A);
+        // const dealii::TrilinosWrappers::MPI::Vector diag_A(inverse_lumped_mass_matrix.block(0));
+        system_matrix.block(1,0).mmult(system_preconditioner_matrix.block(1,1),system_matrix.block(0,1),inverse_lumped_mass_matrix.block(0));
       }
 
   }
@@ -551,7 +551,13 @@ namespace aspect
         if (parameters.use_bfbt)
           {
             LinearAlgebra::PreconditionAMG *Mp_preconditioner_AMG = dynamic_cast<LinearAlgebra::PreconditionAMG *> (Mp_preconditioner.get());
-            Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1));
+            LinearAlgebra::PreconditionAMG::AdditionalData Amg_data;
+            Amg_data.elliptic = true;
+            Amg_data.higher_order_elements = false;
+
+            Amg_data.smoother_sweeps = 2;
+            Amg_data.coarse_type = "symmetric Gauss-Seidel";
+            Mp_preconditioner_AMG->initialize (system_preconditioner_matrix.block(1,1),Amg_data);
           }
         else
           {

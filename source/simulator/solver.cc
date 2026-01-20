@@ -262,9 +262,6 @@ namespace aspect
           wtmp.reinit(inverse_lumped_mass_matrix);
 
 
-          LinearAlgebra::SparseMatrix BC_inv_BT;
-          system_matrix.block(1,0).mmult(BC_inv_BT,system_matrix.block(0,1),inverse_lumped_mass_matrix);
-
 
           {
             SolverControl solver_control(5000, 1e-6 * src.l2_norm(), false, true);
@@ -283,6 +280,7 @@ namespace aspect
             system_matrix.block(1,0).vmult(ptmp,wtmp);
 
             dst=0;
+            solver_control.set_tolerance(1e-6*ptmp.l2_norm());
             solver.solve(system_preconditioner_matrix.block(1,1),
                          dst,
                          ptmp,
