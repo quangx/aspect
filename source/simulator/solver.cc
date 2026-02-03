@@ -267,10 +267,13 @@ namespace aspect
             SolverControl solver_control(5000, 1e-6 * src.l2_norm(), false, true);
             SolverCG<LinearAlgebra::Vector> solver(solver_control);
             //Solve with Schur Complement approximation. system_preconditioner_matrix.block(1,1) contains BC^{-1}B^T with C=diag_A
-            solver.solve(system_preconditioner_matrix.block(1,1),
-                         ptmp,
-                         src,
-                         mp_preconditioner);
+
+            mp_preconditioner.vmult(ptmp,src);
+            // solver.solve(system_preconditioner_matrix.block(1,1),
+            //              ptmp,
+            //              src,
+            //              mp_preconditioner);
+
             n_iterations_ += solver_control.last_step();
             system_matrix.block(0,1).vmult(utmp,ptmp);
 
@@ -281,10 +284,11 @@ namespace aspect
 
             dst=0;
             solver_control.set_tolerance(1e-6*ptmp.l2_norm());
-            solver.solve(system_preconditioner_matrix.block(1,1),
-                         dst,
-                         ptmp,
-                         mp_preconditioner);
+            mp_preconditioner.vmult(dst,ptmp);
+            // solver.solve(system_preconditioner_matrix.block(1,1),
+            //              dst,
+            //              ptmp,
+            //              mp_preconditioner);
             n_iterations_ += solver_control.last_step();
           }
         }
