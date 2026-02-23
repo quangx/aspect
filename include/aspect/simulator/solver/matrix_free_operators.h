@@ -21,14 +21,19 @@
 #ifndef _aspect_simulator_stokes_matrix_free_operators_h
 #define _aspect_simulator_stokes_matrix_free_operators_h
 
+#include "block_stokes_preconditioner.h"
 #include <aspect/global.h>
 #include <aspect/simulator/solver/interface.h>
 #include <aspect/simulator.h>
 
+#include <deal.II/lac/solver_control.h>
+#include <deal.II/lac/trilinos_solver.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <deal.II/multigrid/mg_base.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
@@ -340,6 +345,67 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+    /**
+    * Operator for the B^T block.
+    */
+    template <int dim, int degree_v, typename number>
+    class BBlockOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>
+    {
+      public:
+
+        /**
+         * Constructor.
+         */
+        BBlockOperator ();
+
+        /**
+         * Reset object.
+         */
+        void clear () override;
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::BlockVector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function doesn't do anything, it's created to use the matrixfree loop.
+         */
+        void local_apply_face (const dealii::MatrixFree<dim, number> &data,
+                               dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                               const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                               const std::pair<unsigned int, unsigned int> &face_range) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
 
 
 
@@ -417,6 +483,85 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+
+
+    /**
+     * Operator for the pressure Laplace operator used in the BFBT preconditioner. Matrix is weighted by
+     * the inverse of the viscosity.
+     */
+    template <int dim, int degree_p, typename number>
+    class PressureLaplaceOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+
+        /**
+         * Constructor
+         */
+        PressureLaplaceOperator ();
+
+        /**
+         * Reset the object.
+         */
+        void clear () override;
+
+        /**
+         * Initialize the MatrixFree object given in @p mf_storage and use that to
+         * initialize this operator.
+         */
+        void reinit(const Mapping<dim>              &mapping,
+                    const DoFHandler<dim>           &dof_handler_v,
+                    const DoFHandler<dim>           &dof_handler_p,
+                    const AffineConstraints<number> &constraints_v,
+                    const AffineConstraints<number> &constraints_p,
+                    std::shared_ptr<MatrixFree<dim,double>> mf_storage,
+                    const unsigned int level = numbers::invalid_unsigned_int);
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function contains the inner-most operation done on a single cell
+         */
+        void inner_cell_operation(FEEvaluation<dim,
+                                  degree_p,
+                                  degree_p+2,
+                                  1,
+                                  number> &pressure) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
+
+
 
     /**
      * Operator for the A block of the Stokes matrix. The same class is used for both
@@ -510,7 +655,84 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+
+
+    template<int dim, int degree_v,class BOperatorType, class BTOperatorType, typename number>
+    class DiagonalBC_invBTOperator: public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+        // DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
+        //                          const BOperatorType &B_operator,
+        //                          const BTOperatorType &BT_operator,
+        //                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+        //                          const OperatorCellData<dim, number> &cell_data);
+        DiagonalBC_invBTOperator()=default;
+        void set_up(const BOperatorType &B_operator,
+                    const BTOperatorType &BT_operator,
+                    const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
+                    const OperatorCellData<dim, number> &cell_data,
+                    const dealii::AffineConstraints<double> &constraints_p,
+                    const dealii::Mapping<dim> &mapping,
+                    unsigned int level
+                   );
+
+        void compute_diagonal() override;
+
+        void assemble_sparse_matrix(
+
+          
+          dealii::TrilinosWrappers::SparseMatrix &Z,
+          unsigned int level
+        ) const;
+        
+        dealii::LinearAlgebra::distributed::Vector<double> compute_exact_diagonal(dealii::TrilinosWrappers::SparseMatrix &A) const;
+
+      private:
+        void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                       const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+        std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BC_invBTOperator;
+        const BOperatorType *B_operator=nullptr;
+        const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;
+        const OperatorCellData<dim,number> *cell_data=nullptr;
+        const dealii::AffineConstraints<double> *constraints_p=nullptr;
+        const dealii::Mapping<dim> *mapping=nullptr;
+        unsigned int level=dealii::numbers::invalid_unsigned_int;
+    };
+
+    template <typename VectorType>
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
+    {
+      public:
+        void operator()(const unsigned int level,
+                        VectorType &dst,
+                        const VectorType &src) const override;
+        void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+      private:
+        dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
+    };
+
+    template<typename VectorType>
+    class MGCoarseGridDirectSolve:public dealii::MGCoarseGridBase<VectorType>
+    {
+      public:
+      void operator()(const unsigned int level,
+      VectorType &dst,
+      const VectorType &src) const override;
+      void initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix);
+
+      private:
+      //might not be necessary to have a solver control for a direct solve.
+      std::unique_ptr<dealii::SolverControl> solver_control;
+      std::unique_ptr<dealii::TrilinosWrappers::SolverDirect> direct_solver;
+
+    };
+
+
+
+
   }
+
+
 
 }
 

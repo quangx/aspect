@@ -21,10 +21,16 @@
 #ifndef _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 #define _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 
+#include "matrix_free_operators.h"
+#include "stokes_matrix_free.h"
 #include <aspect/global.h>
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
+#include <deal.II/base/mg_level_object.h>
+#include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -198,6 +204,8 @@ namespace aspect
       FESystem<dim> fe_p;
       FESystem<dim> fe_projection;
 
+      std::vector<dealii::AffineConstraints<double>> level_constraints_p_stored;
+
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.
        */
@@ -212,19 +220,40 @@ namespace aspect
       using SchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,double>;
       using ABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,double>;
       using BTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,double>;
+      using BBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
+      using DiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>;
+      using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGDiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, GMGBBlockOperatorType, GMGBTBlockOperatorType,GMGNumberType>;
+
+
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
+      BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
+      GMGLaplaceType Laplace_block_matrix;
+
+
+      DiagonalBCinvBTType bc_invbt;
+      std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> chebyshev_bc_invbt;
+
+
+
 
       AffineConstraints<double> constraints_v;
       AffineConstraints<double> constraints_p;
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
+      MGLevelObject<GMGBBlockOperatorType> mg_matrices_B_block;
+      MGLevelObject<GMGDiagonalBCinvBTType> mg_matrices_BCinvBT;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
