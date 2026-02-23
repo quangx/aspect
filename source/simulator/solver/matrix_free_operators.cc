@@ -526,6 +526,51 @@ namespace aspect
     data->cell_loop(&BTBlockOperator::local_apply, this, dst, src);
   }
 
+
+
+  /** 
+   *Operator for B block.
+   */ 
+  template <int dim, int degree_p, typename number>
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::BBlockOperator ():
+  MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
+  {}
+
+  template <int dim, int degree_p, typename number>
+  void 
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::clear ()
+  {
+    this->cell_data = nullptr;
+    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>::clear();
+  }
+
+  template <int dim, degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::clear ()
+  {
+    this->cell_data = nullptr;
+    MatrixFreeOperators::Base<dim,dealii::linearAlgebra::distributed::BlockVector<number>>::clear();
+  }
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::
+  set_cell_data (const OperatorCellData<dim,number> &data)
+  {
+    this->cell_data = &data;
+  }
+
+
+  template <int dim, int degree_p, typename number>
+  void 
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>
+  ::compute_diagonal ()
+  {
+    // There is no need in the code for this diagonal.
+    Assert(false, ExcNotImplemented());
+  }
+
   /**
    * Mass matrix operator on pressure
    */
