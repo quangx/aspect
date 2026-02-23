@@ -441,7 +441,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::BTBlockOperator<dim,degree_v,number>::
+  MatrixFreeStokesOperators::BTBlockOperator<dim, degree_v, number>::
   set_cell_data (const OperatorCellData<dim,number> &data)
   {
     this->cell_data = &data;
@@ -462,7 +462,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::BTBlockOperator<dim,degree_v,number>
+  MatrixFreeStokesOperators::BTBlockOperator<dim, degree_v, number>
   ::local_apply (const dealii::MatrixFree<dim, number>                         &data,
                  dealii::LinearAlgebra::distributed::BlockVector<number>       &dst,
                  const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
@@ -483,7 +483,7 @@ namespace aspect
             const VectorizedArray<number> val_p = p_eval.get_value(q);
 
 
-            SymmetricTensor<2,dim,VectorizedArray<number>>
+            SymmetricTensor<2, dim, VectorizedArray<number>>
             velocity_terms;
 
             for (unsigned int d=0; d<dim; ++d)
@@ -535,7 +535,7 @@ namespace aspect
   MatrixFreeStokesOperators::MassMatrixOperator<dim,degree_p,number>::clear ()
   {
     this->cell_data = nullptr;
-    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::clear();
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>::clear();
   }
 
 
@@ -581,7 +581,7 @@ namespace aspect
 
   template <int dim, int degree_p, typename number>
   void
-  MatrixFreeStokesOperators::MassMatrixOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::MassMatrixOperator<dim, degree_p, number>
   ::local_apply (const dealii::MatrixFree<dim, number>                 &data,
                  dealii::LinearAlgebra::distributed::Vector<number>       &dst,
                  const dealii::LinearAlgebra::distributed::Vector<number> &src,
@@ -758,7 +758,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::ABlockOperator<dim,degree_v,number>::
+  MatrixFreeStokesOperators::ABlockOperator<dim, degree_v, number>::
   set_cell_data (const OperatorCellData<dim,number> &data)
   {
     this->cell_data = &data;
@@ -807,7 +807,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::ABlockOperator<dim,degree_v,number>
+  MatrixFreeStokesOperators::ABlockOperator<dim, degree_v, number>
   ::cell_operation(FEEvaluation<dim,
                    degree_v,
                    degree_v+1,
@@ -862,7 +862,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::ABlockOperator<dim,degree_v,number>
+  MatrixFreeStokesOperators::ABlockOperator<dim, degree_v, number>
   ::compute_diagonal ()
   {
     this->inverse_diagonal_entries =
@@ -896,7 +896,7 @@ namespace aspect
 
   template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::ABlockOperator<dim,degree_v,number>
+  MatrixFreeStokesOperators::ABlockOperator<dim, degree_v, number>
   ::set_diagonal (const dealii::LinearAlgebra::distributed::Vector<number> &diag)
   {
     this->inverse_diagonal_entries =
