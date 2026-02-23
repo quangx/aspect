@@ -1216,14 +1216,14 @@ namespace aspect
     solver_control_expensive.enable_history_data();
 
     using GMGPreconditioner = PreconditionMG<dim, VectorType, MGTransferMF<dim,GMGNumberType>>;
-    internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType> inverse_velocity_block_cheap(
+    internal::InverseVelocityBlock<GMGPreconditioner, VectorType, ABlockMatrixType> inverse_velocity_block_cheap(
       A_block_matrix,
       prec_A,
       /* do_solve_A = */ false,
       sim.stokes_A_block_is_symmetric(),
       this->get_parameters().linear_solver_A_block_tolerance);
 
-    internal::InverseVelocityBlock<GMGPreconditioner,VectorType, ABlockMatrixType> inverse_velocity_block_expensive(
+    internal::InverseVelocityBlock<GMGPreconditioner, VectorType, ABlockMatrixType> inverse_velocity_block_expensive(
       A_block_matrix,
       prec_A,
       /* do_solve_A = */ true,
@@ -1246,7 +1246,7 @@ namespace aspect
       this->get_parameters().linear_solver_S_block_tolerance);
 
     const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType>,
-          SchurApproximationType,BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
+          SchurApproximationType, BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
           preconditioner_cheap (
             inverse_velocity_block_cheap,
             schur_approximation_cheap,
