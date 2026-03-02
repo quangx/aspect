@@ -531,40 +531,33 @@ namespace aspect
   /** 
    *Operator for B block.
    */ 
-  template <int dim, int degree_p, typename number>
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::BBlockOperator ():
+  template <int dim, int degree_v, typename number>
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::BBlockOperator ():
   MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
   {}
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_v, typename number>
   void 
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::clear ()
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::clear ()
   {
     this->cell_data = nullptr;
     MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::BlockVector<number>>::clear();
   }
 
-  template <int dim, degree_p, typename number>
-  void
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::clear ()
-  {
-    this->cell_data = nullptr;
-    MatrixFreeOperators::Base<dim,dealii::linearAlgebra::distributed::BlockVector<number>>::clear();
-  }
 
-
-  template <int dim, int degree_p, typename number>
+  
+  template <int dim, int degree_v, typename number>
   void
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>::
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::
   set_cell_data (const OperatorCellData<dim,number> &data)
   {
     this->cell_data = &data;
   }
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_v, typename number>
   void 
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
   ::compute_diagonal ()
   {
     // There is no need in the code for this diagonal.
@@ -573,9 +566,9 @@ namespace aspect
 
 
 
-  template<int dim, degree_p, typename number>
+  template<int dim,int degree_v, typename number>
   void 
-  MatrixFreeStokesOperators::BBlockOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
   ::local_apply(const dealii::MatrixFree<dim,number> &data,
                 dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
                 const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
