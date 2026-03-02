@@ -180,6 +180,9 @@ namespace aspect
 
     };
 
+
+    
+
     /**
      * This class approximates the Schur Complement inverse operator
      * by S^{-1} = (BC^{-1}B^T)^{-1}(BC^{-1}AD^{-1}B^T)(BD^{-1}B^T)^{-1},
@@ -774,7 +777,7 @@ namespace aspect
         solver_control_expensive.enable_history_data();
 
         std::unique_ptr<internal::SchurComplementOperator> schur;
-        if (parameters.use_bfbt && )
+        if (parameters.use_bfbt)
           {
             schur = std::make_unique<internal::WeightedBFBT<LinearAlgebra::PreconditionBase>>(
                       system_preconditioner_matrix.block(pressure_block_index,pressure_block_index),
