@@ -304,36 +304,10 @@ namespace aspect
       n_iterations_Schur_complement_(0)
     {}
 
-    template <class StokesMatrixType, class VectorType, class PreconditionerMp>
-    class DiagBFBT: public SchurComplementOperator
-    {
-      public:
-        /**
-         * Constructor.
-         * @param laplace_preconditioner The preconditioner for @p pressure_laplace_matrix
-         * @param solver_tolerance The relative solver tolerance for the inner solve
-         * @param diag_A Diagonal of A used in the BFBT preconditioner.
-         * @param system_matrix Sparse block matrix storing the Stokes system of the form
-         * [A B^T
-         *  B 0].
-         */
-        DiagBFBT(const PreconditionerMp &mp_preconditioner,
-                 const double solver_tolerance,
-                 const LinearAlgebra::Vector &diag_A,
-                const  StokesMatrixType &system_matrix);
+    
 
-        void vmult(VectorType &dst,
-                   const VectorType &src) const override;
 
-        unsigned int n_iterations() const override;
-
-      private:
-        mutable unsigned int n_iterations_;
-        const PreconditionerMp &laplace_preconditioner;
-        const double solver_tolerance;
-        const LinearAlgebra::Vector &diag_A;
-        const StokesMatrixType &system_matrix;
-    };
+    
 
 
     template<class OperatorType, class StokesMatrixType, class SchurComplementMatrixType, class VectorType>
@@ -381,11 +355,61 @@ namespace aspect
           n_iterations_Schur_complement_ += 1;
         }
     }
+
+
+
     template<class OperatorType, class StokesMatrixType, class SchurComplementMatrixType, class VectorType>
     unsigned int SchurApproximation<OperatorType, StokesMatrixType, SchurComplementMatrixType, VectorType>::n_iterations() const
     {
       return n_iterations_Schur_complement_;
     }
+
+
+
+    /**
+     * Base class for Schur Complement operators.
+     */
+    template<class VectorType>
+    class SchurComplementOperator
+    {
+      public:
+        virtual ~SchurComplementOperator() = default;
+
+        virtual void vmult(VectorType &dst,
+                           const VectorType &src) const=0;
+        virtual unsigned int n_iterations() const=0;
+
+    };
+    template <class StokesMatrixType, class VectorType, class PreconditionerMp>
+    class DiagBFBT: public SchurComplementOperator<VectorType>
+    {
+      public:
+        /**
+         * Constructor.
+         * @param laplace_preconditioner The preconditioner for @p pressure_laplace_matrix
+         * @param solver_tolerance The relative solver tolerance for the inner solve
+         * @param diag_A Diagonal of A used in the BFBT preconditioner.
+         * @param system_matrix Sparse block matrix storing the Stokes system of the form
+         * [A B^T
+         *  B 0].
+         */
+        DiagBFBT(const PreconditionerMp &mp_preconditioner,
+                 const double solver_tolerance,
+                 const LinearAlgebra::Vector &diag_A,
+                const  StokesMatrixType &system_matrix);
+
+        void vmult(VectorType &dst,
+                   const VectorType &src) const override;
+
+        unsigned int n_iterations() const override;
+
+      private:
+        mutable unsigned int n_iterations_;
+        const PreconditionerMp &laplace_preconditioner;
+        const double solver_tolerance;
+        const LinearAlgebra::Vector &diag_A;
+        const StokesMatrixType &system_matrix;
+    };
 
 
   }
