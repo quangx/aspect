@@ -46,6 +46,36 @@
 namespace aspect
 {
 
+    // template <class StokesMatrixType, class VectorType, class PreconditionerMp>
+    // class DiagBFBT: public SchurComplementOperator
+    // {
+    //   public:
+    //     /**
+    //      * Constructor.
+    //      * @param laplace_preconditioner The preconditioner for @p pressure_laplace_matrix
+    //      * @param solver_tolerance The relative solver tolerance for the inner solve
+    //      * @param diag_A Diagonal of A used in the BFBT preconditioner.
+    //      * @param system_matrix Sparse block matrix storing the Stokes system of the form
+    //      * [A B^T
+    //      *  B 0].
+    //      */
+    //     DiagBFBT(const PreconditionerMp &mp_preconditioner,
+    //              const double solver_tolerance,
+    //              const LinearAlgebra::Vector &diag_A,
+    //             const  StokesMatrixType &system_matrix);
+
+    //     void vmult(VectorType &dst,
+    //                const VectorType &src) const override;
+
+    //     unsigned int n_iterations() const override;
+
+    //   private:
+    //     mutable unsigned int n_iterations_;
+    //     const PreconditionerMp &laplace_preconditioner;
+    //     const double solver_tolerance;
+    //     const LinearAlgebra::Vector &diag_A;
+    //     const StokesMatrixType &system_matrix;
+    // };
   template <int dim, int velocity_degree>
   void
   StokesMatrixFreeHandlerLocalSmoothingImplementation<dim, velocity_degree>::declare_parameters(ParameterHandler &prm)
