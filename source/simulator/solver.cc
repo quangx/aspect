@@ -166,19 +166,7 @@ namespace aspect
       return dst.l2_norm();
     }
 
-    /**
-     * Base class for Schur Complement operators.
-     */
-    class SchurComplementOperator
-    {
-      public:
-        virtual ~SchurComplementOperator() = default;
 
-        virtual void vmult(LinearAlgebra::Vector &dst,
-                           const LinearAlgebra::Vector &src) const=0;
-        virtual unsigned int n_iterations() const=0;
-
-    };
 
 
     
@@ -191,7 +179,7 @@ namespace aspect
      * velocity mass matrix.
      */
     template <class PreconditionerMp>
-    class WeightedBFBT: public SchurComplementOperator
+    class WeightedBFBT: public SchurComplementOperator<LinearAlgebra::Vector>
     {
       public:
         /**
@@ -225,36 +213,7 @@ namespace aspect
     };
 
 
-    template <class StokesMatrixType, class VectorType, class PreconditionerMp>
-    class DiagBFBT: public SchurComplementOperator
-    {
-      public:
-        /**
-         * Constructor.
-         * @param laplace_preconditioner The preconditioner for @p pressure_laplace_matrix
-         * @param solver_tolerance The relative solver tolerance for the inner solve
-         * @param diag_A Diagonal of A used in the BFBT preconditioner.
-         * @param system_matrix Sparse block matrix storing the Stokes system of the form
-         * [A B^T
-         *  B 0].
-         */
-        DiagBFBT(const PreconditionerMp &mp_preconditioner,
-                 const double solver_tolerance,
-                 const LinearAlgebra::Vector &diag_A,
-                const  StokesMatrixType &system_matrix);
-
-        void vmult(VectorType &dst,
-                   const VectorType &src) const override;
-
-        unsigned int n_iterations() const override;
-
-      private:
-        mutable unsigned int n_iterations_;
-        const PreconditionerMp &laplace_preconditioner;
-        const double solver_tolerance;
-        const LinearAlgebra::Vector &diag_A;
-        const StokesMatrixType &system_matrix;
-    };
+  
 
     template <class PreconditionerMp>
     WeightedBFBT<PreconditionerMp>::WeightedBFBT(
@@ -344,7 +303,7 @@ namespace aspect
       * PreconditionerMp passed to the constructor.
       */
     template <class PreconditionerMp>
-    class InverseWeightedMassMatrix: public SchurComplementOperator
+    class InverseWeightedMassMatrix: public SchurComplementOperator<LinearAlgebra::Vector>
     {
       public:
         /**
@@ -808,7 +767,7 @@ namespace aspect
         solver_control_cheap.enable_history_data();
         solver_control_expensive.enable_history_data();
 
-        std::unique_ptr<internal::SchurComplementOperator> schur;
+        std::unique_ptr<internal::SchurComplementOperator<LinearAlgebra::Vector>> schur;
         if (parameters.use_bfbt)
           {
             schur = std::make_unique<internal::WeightedBFBT<LinearAlgebra::PreconditionBase>>(
@@ -835,7 +794,7 @@ namespace aspect
           stokes_A_block_is_symmetric(),
           parameters.linear_solver_A_block_tolerance);
         const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<LinearAlgebra::PreconditionAMG, LinearAlgebra::Vector, LinearAlgebra::SparseMatrix>,
-              internal::SchurComplementOperator, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
+              internal::SchurComplementOperator<LinearAlgebra::Vector>, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
               preconditioner_cheap (
                 inverse_velocity_block_cheap,
                 *schur,
@@ -849,7 +808,7 @@ namespace aspect
           stokes_A_block_is_symmetric(),
           parameters.linear_solver_A_block_tolerance);
         const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<LinearAlgebra::PreconditionAMG, LinearAlgebra::Vector, LinearAlgebra::SparseMatrix>,
-              internal::SchurComplementOperator, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
+              internal::SchurComplementOperator<LinearAlgebra::Vector>, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
               preconditioner_expensive (
                 inverse_velocity_block_expensive,
                 *schur,
