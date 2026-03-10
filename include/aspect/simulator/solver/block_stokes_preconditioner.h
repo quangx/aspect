@@ -393,9 +393,9 @@ namespace aspect
          * [A B^T
          *  B 0].
          */
-        DiagBFBT(const PreconditionerMp &mp_preconditioner,
+        DiagBFBT(const PreconditionerMp &laplace_preconditioner,
                  const double solver_tolerance,
-                 const LinearAlgebra::Vector &diag_A,
+                 const VectorType &diag_A,
                 const  StokesMatrixType &system_matrix);
 
         void vmult(VectorType &dst,
