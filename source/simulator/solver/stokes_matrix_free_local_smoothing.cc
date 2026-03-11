@@ -58,6 +58,13 @@ namespace aspect
                                                                       system_matrix(system_matrix)
                                                                       
     {}
+
+
+
+    template<class StokesMatrixType, class VectorType, class PreconditionerMp>
+    unsigned int DiagBFBT<StokesMatrixType,VectorType,PreconditionerMp>::n_iterations() const{
+      return n_iterations_;
+    }
     
 
   }
