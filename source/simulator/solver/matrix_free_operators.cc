@@ -1023,6 +1023,8 @@ namespace aspect
   template class MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>; \
   template class MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>; \
+  template class MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>;\
+  template class MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>;\
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,2,GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
