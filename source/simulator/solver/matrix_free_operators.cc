@@ -601,6 +601,16 @@ namespace aspect
       }
   }
 
+  template <int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
+  ::apply_add (dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+               const dealii::LinearAlgebra::distributed::BlockVector<number> &src) const
+  {
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>::
+    data->cell_loop(&BBlockOperator::local_apply, this, dst, src);
+  }
+
   /**
    * Mass matrix operator on pressure
    */
