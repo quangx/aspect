@@ -68,26 +68,26 @@ namespace aspect
     }
     
 
-    template<class StokesMatrixType, class VectorType, class PreconditionerMp>
-    void DiagBFBT<StokesMatrixType, VectorType, PreconditionerMp>::vmult(VectorType &dst, const VectorType &src){
-      SolverControl solver_control(1000, src.l2_norm() * solver_tolerance);
-      PrimitiveVectorMemory<LinearAlgebra::Vector> mem;
-      SolverCG<LinearAlgebra::Vector> solver(solver_control, mem); //These vector types might be wrong
-      try{
-        VectorType utmp;
-        utmp.reinit(diag_A);
-        VectorType ptmp;
-        ptmp.reinit(src);
-        VectorType wtmpt;
-        wtmp.reinit(diag_A);
-        {
-          SolverControl solver_control(5000,1e-6*src.l2_norm(),false,true);
-          SolverCG<VectorType> solver(solver_control);
-          const auto Op_A=LinearOperator<VectorType>(system_matrix.block(0,0));
+    // template<class StokesMatrixType, class VectorType, class PreconditionerMp>
+    // void DiagBFBT<StokesMatrixType, VectorType, PreconditionerMp>::vmult(VectorType &dst, const VectorType &src){
+    //   SolverControl solver_control(1000, src.l2_norm() * solver_tolerance);
+    //   PrimitiveVectorMemory<LinearAlgebra::Vector> mem;
+    //   SolverCG<LinearAlgebra::Vector> solver(solver_control, mem); //These vector types might be wrong
+    //   try{
+    //     VectorType utmp;
+    //     utmp.reinit(diag_A);
+    //     VectorType ptmp;
+    //     ptmp.reinit(src);
+    //     VectorType wtmpt;
+    //     wtmp.reinit(diag_A);
+    //     {
+    //       SolverControl solver_control(5000,1e-6*src.l2_norm(),false,true);
+    //       SolverCG<VectorType> solver(solver_control);
+    //       const auto Op_A=LinearOperator<VectorType>(system_matrix.block(0,0));
           
-        }
-      }
-    }
+    //     }
+    //   }
+    // }
     
 
   }
