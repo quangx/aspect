@@ -113,6 +113,7 @@ namespace aspect
           VectorType ptmp2;
           ptmp.reinit(src);
           ptmp2.reinit(src);
+          PrimitiveVectorMemory<VectorType> mem;
 
           if (!do_solve_schur_complement)
             {
@@ -121,8 +122,9 @@ namespace aspect
             }
           else
             {
+
               SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
-              SolverCG<VectorType> solver(solver_control);
+              SolverCG<VectorType> solver(solver_control,mem);
               ptmp = 0;
               solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
@@ -161,7 +163,7 @@ namespace aspect
           else
             {
               SolverControl solver_control(5000, ptmp2.l2_norm() * solver_tolerance, false, true);
-              SolverCG<VectorType> solver(solver_control);
+              SolverCG<VectorType> solver(solver_control,mem);
               dst = 0;
               solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
@@ -1400,7 +1402,7 @@ namespace aspect
                                       stokes_matrix,
                                       A_block_matrix,
                                       B_block,
-                                      BT_block); //hack - the full schur solves do not seem to converge
+                                      BT_block); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_Schur,
