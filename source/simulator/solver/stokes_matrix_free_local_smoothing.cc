@@ -47,6 +47,33 @@ namespace aspect
 {
 
   namespace internal{
+
+
+    template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
+    void BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                                                                              const dealii::LinearAlgebra::distributed::Vector<double> &src) const
+                                                                              {
+     dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
+     dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
+     system_matrix.initialize_dof_vector(block_src);
+     system_matrix.initialize_dof_vector(block_dst);
+
+     block_src.block(1)=src;
+     block_src.block(0)=0;
+     block_dst=0;
+     BT_operator.vmult(block_dst,block_src);
+
+     block_dst.block(0).scale(diag_A_inv);
+
+     block_src.block(0)=block_dst.block(0);
+     block_src.block(1)=0;
+     block_dst=0;
+     B_operator.vmult(block_dst,block_src);
+     dst=block_dst.block(1);
+                                                                              }
+
+
+
     template<class StokesMatrixType, class VectorType, class PreconditionerMp>
     DiagBFBT<StokesMatrixType, VectorType, PreconditionerMp>::DiagBFBT(const PreconditionerMp &mp_preconditioner,
                                                                        const double solver_tolerance,
