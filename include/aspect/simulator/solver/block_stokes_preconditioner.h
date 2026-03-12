@@ -403,36 +403,46 @@ namespace aspect
       const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
     };
 
-    template <class StokesMatrixType, class VectorType, class PreconditionerMp>
-    class DiagBFBT: public SchurComplementOperator<VectorType>
-    {
-      public:
-        /**
-         * Constructor.
-         * @param laplace_preconditioner The preconditioner for @p pressure_laplace_matrix
-         * @param solver_tolerance The relative solver tolerance for the inner solve
-         * @param diag_A Diagonal of A used in the BFBT preconditioner.
-         * @param system_matrix Sparse block matrix storing the Stokes system of the form
-         * [A B^T
-         *  B 0].
-         */
-        DiagBFBT(const PreconditionerMp &laplace_preconditioner,
-                 const double solver_tolerance,
-                 const VectorType &diag_A,
-                const  StokesMatrixType &system_matrix);
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+class DiagBFBT: public SchurComplementOperator<VectorType>
+{
+  public:
+    /**
+     * Constructor.
+     * @param mp_preconditioner The preconditioner for BC^{-1}B^T operator.
+     * @param solver_tolerance The relative solver tolerance for the inner solve.
+     * @param diag_A Diagonal of A used in the BFBT preconditioner.
+     * @param system_matrix Sparse block matrix storing the Stokes system of the form
+     * [A B^T
+     *  B 0].
+     * @param A_operator The velocity block operator.
+     * @param B_operator The B block operator.
+     * @param BT_operator The B^T block operator.
+     */
+    DiagBFBT(const PreconditionerMp &mp_preconditioner,
+             const double solver_tolerance,
+             const dealii::LinearAlgebra::distributed::Vector<double> &diag_A,
+             const StokesMatrixType &system_matrix,
+             const AOperatorType &A_operator,
+             const BOperatorType &B_operator,
+             const BTOperatorType &BT_operator);
 
-        void vmult(VectorType &dst,
-                   const VectorType &src) const override;
+    void vmult(VectorType &dst,
+               const VectorType &src) const override;
 
-        unsigned int n_iterations() const override;
+    unsigned int n_iterations() const override;
 
-      private:
-        mutable unsigned int n_iterations_;
-        const PreconditionerMp &laplace_preconditioner;
-        const double solver_tolerance;
-        const LinearAlgebra::Vector &diag_A;
-        const StokesMatrixType &system_matrix;
-    };
+  private:
+    mutable unsigned int n_iterations_;
+    const PreconditionerMp &mp_preconditioner;
+    const double solver_tolerance;
+    const dealii::LinearAlgebra::distributed::Vector<double> &diag_A;
+    dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv;
+    const StokesMatrixType &system_matrix;
+    const AOperatorType &A_operator;
+    const BOperatorType &B_operator;
+    const BTOperatorType &BT_operator;
+};
 
 
   }
