@@ -380,6 +380,29 @@ namespace aspect
         virtual unsigned int n_iterations() const=0;
 
     };
+
+
+    template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
+    class BC_invBT_Operator{
+      public:
+      BC_invBT_Operator(const StokesMatrixType &system_matrix,
+                        const BOperatorType &B_operator,
+                        const BTOperatorType &BT_operator,
+                        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
+                        system_matrix(system_matrix),
+                        B_operator(B_operator),
+                        BT_operator(BT_operator),
+                        diag_A_inv(diag_A_inv)
+                        {}
+      void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
+      private:
+      const StokesMatrixType &system_matrix;
+      const BOperatorType &B_operator;
+      const BTOperatorType &BT_operator;
+      const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+    };
+
     template <class StokesMatrixType, class VectorType, class PreconditionerMp>
     class DiagBFBT: public SchurComplementOperator<VectorType>
     {
