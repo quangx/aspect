@@ -340,7 +340,7 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
-      /**
+    /**
     * Operator for the B^T block.
     */
     template <int dim, int degree_v, typename number>
