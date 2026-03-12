@@ -73,47 +73,93 @@ namespace aspect
 
 
 
-    template<class StokesMatrixType, class VectorType, class PreconditionerMp>
-    DiagBFBT<StokesMatrixType, VectorType, PreconditionerMp>::DiagBFBT(const PreconditionerMp &mp_preconditioner,
-                                                                       const double solver_tolerance,
-                                                                       const VectorType &diag_A,
-                                                                      const StokesMatrixType & system_matrix):
-                                                                      n_iterations_(0),
-                                                                      laplace_preconditioner(laplace_preconditioner),
-                                                                      solver_tolerance(solver_tolerance),
-                                                                      diag_A(diag_A),
-                                                                      system_matrix(system_matrix)
-                                                                      
-    {}
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::DiagBFBT(
+  const PreconditionerMp &mp_preconditioner,
+  const double solver_tolerance,
+  const dealii::LinearAlgebra::distributed::Vector<double> &diag_A,
+  const StokesMatrixType &system_matrix,
+  const AOperatorType &A_operator,
+  const BOperatorType &B_operator,
+  const BTOperatorType &BT_operator)
+  : n_iterations_(0),
+    mp_preconditioner(mp_preconditioner),
+    solver_tolerance(solver_tolerance),
+    diag_A(diag_A),
+    diag_A_inv(diag_A),
+    system_matrix(system_matrix),
+    A_operator(A_operator),
+    B_operator(B_operator),
+    BT_operator(BT_operator)
+{
+  for (auto &el : diag_A_inv)
+    el = 1.0 / el;
+}
 
 
+template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::vmult(
+  VectorType &dst, const VectorType &src) const
+{
+  try
+    {
+      BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
+        Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
 
-    template<class StokesMatrixType, class VectorType, class PreconditionerMp>
-    unsigned int DiagBFBT<StokesMatrixType,VectorType,PreconditionerMp>::n_iterations() const{
+      VectorType ptmp, ptmp2;
+      ptmp.reinit(src);
+      ptmp2.reinit(src);
+
+      SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
+      SolverCG<VectorType> solver(solver_control);
+
+      ptmp = 0;
+      solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
+      n_iterations_ += solver_control.last_step();
+
+      {
+        dealii::LinearAlgebra::distributed::BlockVector<double> block_src, block_dst;
+        system_matrix.initialize_dof_vector(block_src);
+        system_matrix.initialize_dof_vector(block_dst);
+
+        block_src.block(1) = ptmp;
+        block_src.block(0) = 0;
+        block_dst = 0;
+        BT_operator.vmult(block_dst, block_src);
+
+        block_dst.block(0).scale(diag_A_inv);
+
+        A_operator.vmult(block_src.block(0), block_dst.block(0));
+
+        block_src.block(0).scale(diag_A_inv);
+
+        block_src.block(1) = 0;
+        block_dst = 0;
+        B_operator.vmult(block_dst, block_src);
+        ptmp2 = block_dst.block(1);
+      }
+
+      dst = 0;
+      solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
+      n_iterations_ += solver_control.last_step();
+    }
+  catch (const std::exception &exc)
+    {
+      Utilities::throw_linear_solver_failure_exception("iterative (DiagBFBT) solver",
+                                                       "DiagBFBT::vmult",
+                                                       std::vector<SolverControl> {},
+                                                       exc,
+                                                       src.get_mpi_communicator());
+    }
+}
+
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::n_iterations() const{
       return n_iterations_;
     }
     
 
-    // template<class StokesMatrixType, class VectorType, class PreconditionerMp>
-    // void DiagBFBT<StokesMatrixType, VectorType, PreconditionerMp>::vmult(VectorType &dst, const VectorType &src){
-    //   SolverControl solver_control(1000, src.l2_norm() * solver_tolerance);
-    //   PrimitiveVectorMemory<LinearAlgebra::Vector> mem;
-    //   SolverCG<LinearAlgebra::Vector> solver(solver_control, mem); //These vector types might be wrong
-    //   try{
-    //     VectorType utmp;
-    //     utmp.reinit(diag_A);
-    //     VectorType ptmp;
-    //     ptmp.reinit(src);
-    //     VectorType wtmpt;
-    //     wtmp.reinit(diag_A);
-    //     {
-    //       SolverControl solver_control(5000,1e-6*src.l2_norm(),false,true);
-    //       SolverCG<VectorType> solver(solver_control);
-    //       const auto Op_A=LinearOperator<VectorType>(system_matrix.block(0,0));
-          
-    //     }
-    //   }
-    // }
+ 
     
 
   }
