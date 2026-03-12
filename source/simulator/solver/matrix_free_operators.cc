@@ -528,16 +528,16 @@ namespace aspect
 
 
 
-  /** 
+  /**
    *Operator for B block.
-   */ 
+   */
   template <int dim, int degree_v, typename number>
   MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::BBlockOperator ():
-  MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>()
   {}
 
   template <int dim, int degree_v, typename number>
-  void 
+  void
   MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::clear ()
   {
     this->cell_data = nullptr;
@@ -545,7 +545,7 @@ namespace aspect
   }
 
 
-  
+
   template <int dim, int degree_v, typename number>
   void
   MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>::
@@ -556,7 +556,7 @@ namespace aspect
 
 
   template <int dim, int degree_v, typename number>
-  void 
+  void
   MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
   ::compute_diagonal ()
   {
@@ -567,7 +567,7 @@ namespace aspect
 
 
   template<int dim,int degree_v, typename number>
-  void 
+  void
   MatrixFreeStokesOperators::BBlockOperator<dim,degree_v,number>
   ::local_apply(const dealii::MatrixFree<dim,number> &data,
                 dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
@@ -587,9 +587,9 @@ namespace aspect
 
         p_eval.reinit(cell);
 
-        
+
         SymmetricTensor<2,dim,VectorizedArray<number>> sym_grad_u;
-    
+
         for (const unsigned int q : u_eval.quadrature_point_indices())
           {
             sym_grad_u = u_eval.get_symmetric_gradient(q);
@@ -600,9 +600,9 @@ namespace aspect
             p_eval.submit_value(pressure_terms, q);
 
 
-            
+
           }
-          
+
 
         p_eval.integrate_scatter(EvaluationFlags::values, dst.block(1));
       }

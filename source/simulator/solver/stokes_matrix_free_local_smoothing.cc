@@ -46,125 +46,150 @@
 namespace aspect
 {
 
-  namespace internal{
+  namespace internal
+  {
 
 
     template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
     void BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
-                                                                              const dealii::LinearAlgebra::distributed::Vector<double> &src) const
-                                                                              {
-     dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
-     dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
-     system_matrix.initialize_dof_vector(block_src);
-     system_matrix.initialize_dof_vector(block_dst);
+                                                                                   const dealii::LinearAlgebra::distributed::Vector<double> &src) const
+    {
+      dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
+      dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
+      block_src.reinit(2);
+      block_dst.reinit(2);
 
-     block_src.block(1)=src;
-     block_src.block(0)=0;
-     block_dst=0;
-     BT_operator.vmult(block_dst,block_src);
+      system_matrix.initialize_dof_vector(block_src);
+      system_matrix.initialize_dof_vector(block_dst);
 
-     block_dst.block(0).scale(diag_A_inv);
+      block_src.block(1)=src;
+      block_src.block(0)=0;
+      block_dst=0;
+      BT_operator.vmult(block_dst,block_src);
 
-     block_src.block(0)=block_dst.block(0);
-     block_src.block(1)=0;
-     block_dst=0;
-     B_operator.vmult(block_dst,block_src);
-     dst=block_dst.block(1);
-                                                                              }
+      block_dst.block(0).scale(diag_A_inv);
+
+      block_src.block(0)=block_dst.block(0);
+      block_src.block(1)=0;
+      block_dst=0;
+      B_operator.vmult(block_dst,block_src);
+      dst=block_dst.block(1);
+    }
 
 
 
     template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::DiagBFBT(
-  const PreconditionerMp &mp_preconditioner,
-  const double solver_tolerance,
-  const dealii::LinearAlgebra::distributed::Vector<double> &diag_A,
-  const StokesMatrixType &system_matrix,
-  const AOperatorType &A_operator,
-  const BOperatorType &B_operator,
-  const BTOperatorType &BT_operator)
-  : n_iterations_(0),
-    mp_preconditioner(mp_preconditioner),
-    solver_tolerance(solver_tolerance),
-    diag_A(diag_A),
-    diag_A_inv(diag_A),
-    system_matrix(system_matrix),
-    A_operator(A_operator),
-    B_operator(B_operator),
-    BT_operator(BT_operator)
-{
-  for (auto &el : diag_A_inv)
-    el = 1.0 / el;
-}
-
-
-template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::vmult(
-  VectorType &dst, const VectorType &src) const
-{
-  try
+    DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::DiagBFBT(
+      const PreconditionerMp &mp_preconditioner,
+      const bool do_solve_schur_complement,
+      const double solver_tolerance,
+      const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+      const StokesMatrixType &system_matrix,
+      const AOperatorType &A_operator,
+      const BOperatorType &B_operator,
+      const BTOperatorType &BT_operator)
+      : n_iterations_(0),
+        mp_preconditioner(mp_preconditioner),
+        do_solve_schur_complement(do_solve_schur_complement),
+        solver_tolerance(solver_tolerance),
+        diag_A_inv(diag_A_inv),
+        system_matrix(system_matrix),
+        A_operator(A_operator),
+        B_operator(B_operator),
+        BT_operator(BT_operator)
     {
-      BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
-        Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
 
-      VectorType ptmp, ptmp2;
-      ptmp.reinit(src);
-      ptmp2.reinit(src);
-
-      SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
-      SolverCG<VectorType> solver(solver_control);
-
-      ptmp = 0;
-      solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
-      n_iterations_ += solver_control.last_step();
-
-      {
-        dealii::LinearAlgebra::distributed::BlockVector<double> block_src, block_dst;
-        system_matrix.initialize_dof_vector(block_src);
-        system_matrix.initialize_dof_vector(block_dst);
-
-        block_src.block(1) = ptmp;
-        block_src.block(0) = 0;
-        block_dst = 0;
-        BT_operator.vmult(block_dst, block_src);
-
-        block_dst.block(0).scale(diag_A_inv);
-
-        A_operator.vmult(block_src.block(0), block_dst.block(0));
-
-        block_src.block(0).scale(diag_A_inv);
-
-        block_src.block(1) = 0;
-        block_dst = 0;
-        B_operator.vmult(block_dst, block_src);
-        ptmp2 = block_dst.block(1);
-      }
-
-      dst = 0;
-      solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
-      n_iterations_ += solver_control.last_step();
     }
-  catch (const std::exception &exc)
-    {
-      Utilities::throw_linear_solver_failure_exception("iterative (DiagBFBT) solver",
-                                                       "DiagBFBT::vmult",
-                                                       std::vector<SolverControl> {},
-                                                       exc,
-                                                       src.get_mpi_communicator());
-    }
-}
 
     template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::n_iterations() const{
+    void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::vmult(
+      VectorType &dst, const VectorType &src) const
+    {
+      try
+        {
+          BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
+          Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
+
+          VectorType ptmp;
+          VectorType ptmp2;
+          ptmp.reinit(src);
+          ptmp2.reinit(src);
+
+          if (!do_solve_schur_complement)
+            {
+              Op_BC_invBT.vmult(ptmp, src);
+              n_iterations_ += 1;
+            }
+          else
+            {
+              SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
+              SolverCG<VectorType> solver(solver_control);
+              ptmp = 0;
+              solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
+              n_iterations_ += solver_control.last_step();
+            }
+
+          {
+            dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
+            dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
+            block_src.reinit(2);
+            block_dst.reinit(2);
+            system_matrix.initialize_dof_vector(block_src);
+            system_matrix.initialize_dof_vector(block_dst);
+
+            block_src.block(1) = ptmp;
+            block_src.block(0) = 0;
+            block_dst = 0;
+            BT_operator.vmult(block_dst, block_src);
+
+            block_dst.block(0).scale(diag_A_inv);
+
+            A_operator.vmult(block_src.block(0), block_dst.block(0));
+
+            block_src.block(0).scale(diag_A_inv);
+
+            block_src.block(1) = 0;
+            block_dst = 0;
+            B_operator.vmult(block_dst, block_src);
+            ptmp2 = block_dst.block(1);
+          }
+
+          if (!do_solve_schur_complement)
+            {
+              Op_BC_invBT.vmult(dst, ptmp2);
+              n_iterations_ += 1;
+            }
+          else
+            {
+              SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
+              SolverCG<VectorType> solver(solver_control);
+              dst = 0;
+              solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
+              n_iterations_ += solver_control.last_step();
+            }
+        }
+      catch (const std::exception &exc)
+        {
+          Utilities::throw_linear_solver_failure_exception("iterative (DiagBFBT) solver",
+                                                           "DiagBFBT::vmult",
+                                                           std::vector<SolverControl> {},
+                                                           exc,
+                                                           src.get_mpi_communicator());
+        }
+    }
+
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::n_iterations() const
+    {
       return n_iterations_;
     }
-    
 
- 
-    
+
+
+
 
   }
-   
+
   template <int dim, int velocity_degree>
   void
   StokesMatrixFreeHandlerLocalSmoothingImplementation<dim, velocity_degree>::declare_parameters(ParameterHandler &prm)
@@ -474,6 +499,7 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
 
     // Store viscosity tables and other data into the active level matrix-free objects.
     stokes_matrix.set_cell_data(active_cell_data);
+    B_block.set_cell_data(active_cell_data);
     BT_block.set_cell_data(active_cell_data);
 
     if (this->get_parameters().n_expensive_stokes_solver_steps > 0)
@@ -1334,6 +1360,12 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
     solver_control_expensive.enable_history_data();
 
     using GMGPreconditioner = PreconditionMG<dim, VectorType, MGTransferMF<dim,GMGNumberType>>;
+    using BlockSchurPreconditionerType = internal::BlockSchurPreconditioner<
+                                         internal::InverseVelocityBlock<GMGPreconditioner, VectorType, ABlockMatrixType>,
+                                         BTBlockOperatorType,
+                                         dealii::LinearAlgebra::distributed::BlockVector<double>,
+                                         VectorType>;
+
     internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType> inverse_velocity_block_cheap(
       A_block_matrix,
       prec_A,
@@ -1341,41 +1373,71 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
       sim.stokes_A_block_is_symmetric(),
       this->get_parameters().linear_solver_A_block_tolerance);
 
-    internal::InverseVelocityBlock<GMGPreconditioner,VectorType, ABlockMatrixType> inverse_velocity_block_expensive(
+    internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType> inverse_velocity_block_expensive(
       A_block_matrix,
       prec_A,
       /* do_solve_A = */ true,
       sim.stokes_A_block_is_symmetric(),
       this->get_parameters().linear_solver_A_block_tolerance);
 
-    using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner,StokesMatrixType,SchurComplementMatrixType, VectorType>;
-    internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType> schur_approximation_cheap(
-      prec_Schur,
-      stokes_matrix,
-      Schur_complement_block_matrix,
-      /*do_solve_Schur*/ false,
-      this->get_parameters().linear_solver_S_block_tolerance);
+    dealii::LinearAlgebra::distributed::Vector<double> diag_A;
+    std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
+    std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
-    internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType> schur_approximation_expensive(
-      prec_Schur,
-      stokes_matrix,
-      Schur_complement_block_matrix,
-      /*do_solve_Schur*/ true,
-      this->get_parameters().linear_solver_S_block_tolerance);
+    if (this->get_parameters().use_bfbt)
+      {
+        A_block_matrix.compute_diagonal();
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
+          A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
 
-    const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType>,
-          SchurApproximationType,BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
-          preconditioner_cheap (
-            inverse_velocity_block_cheap,
-            schur_approximation_cheap,
-            BT_block);
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, GMGPreconditioner>;
+        schur_approximation_cheap = std::make_unique<DiagBFBTType>(
+                                      prec_Schur,
+                                      /*do_solve_schur_complement*/ true,
+                                      this->get_parameters().linear_solver_S_block_tolerance,
+                                      diag_A_inv,
+                                      stokes_matrix,
+                                      A_block_matrix,
+                                      B_block,
+                                      BT_block); //hack - the full schur solves do not seem to converge
 
-    const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType>,
-          SchurApproximationType, BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
-          preconditioner_expensive (
-            inverse_velocity_block_expensive,
-            schur_approximation_expensive,
-            BT_block);
+        schur_approximation_expensive = std::make_unique<DiagBFBTType>(
+                                          prec_Schur,
+                                          /*do_solve_schur_complement*/ true,
+                                          this->get_parameters().linear_solver_S_block_tolerance,
+                                          diag_A_inv,
+                                          stokes_matrix,
+                                          A_block_matrix,
+                                          B_block,
+                                          BT_block);
+      }
+    else
+      {
+        using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
+        schur_approximation_cheap = std::make_unique<SchurApproximationType>(
+                                      prec_Schur,
+                                      stokes_matrix,
+                                      Schur_complement_block_matrix,
+                                      /*do_solve_Schur*/ false,
+                                      this->get_parameters().linear_solver_S_block_tolerance);
+
+        schur_approximation_expensive = std::make_unique<SchurApproximationType>(
+                                          prec_Schur,
+                                          stokes_matrix,
+                                          Schur_complement_block_matrix,
+                                          /*do_solve_Schur*/ true,
+                                          this->get_parameters().linear_solver_S_block_tolerance);
+      }
+
+    const BlockSchurPreconditionerType preconditioner_cheap(
+      inverse_velocity_block_cheap,
+      *schur_approximation_cheap,
+      BT_block);
+
+    const BlockSchurPreconditionerType preconditioner_expensive(
+      inverse_velocity_block_expensive,
+      *schur_approximation_expensive,
+      BT_block);
 
 
 
@@ -1631,7 +1693,7 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
             ++sim.linear_solver_failures;
 
             this->get_signals().post_stokes_solver(sim,
-                                                   schur_approximation_cheap.n_iterations() + schur_approximation_expensive.n_iterations(),
+                                                   schur_approximation_cheap->n_iterations() + schur_approximation_expensive->n_iterations(),
                                                    inverse_velocity_block_cheap.n_iterations() + inverse_velocity_block_expensive.n_iterations(),
                                                    solver_control_cheap,
                                                    solver_control_expensive);
@@ -1668,7 +1730,7 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
 
     //signal successful solver
     this->get_signals().post_stokes_solver(sim,
-                                           schur_approximation_cheap.n_iterations() + schur_approximation_expensive.n_iterations(),
+                                           schur_approximation_cheap->n_iterations() + schur_approximation_expensive->n_iterations(),
                                            inverse_velocity_block_cheap.n_iterations() + inverse_velocity_block_expensive.n_iterations(),
                                            solver_control_cheap,
                                            solver_control_expensive);
@@ -1697,9 +1759,9 @@ void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, Ve
 
     if (print_details)
       {
-        this->get_pcout() << "     Schur complement preconditioner: " << schur_approximation_cheap.n_iterations()
+        this->get_pcout() << "     Schur complement preconditioner: " << schur_approximation_cheap->n_iterations()
                           << '+'
-                          << schur_approximation_expensive.n_iterations()
+                          << schur_approximation_expensive->n_iterations()
                           << " iterations." << std::endl;
         this->get_pcout() << "     A block preconditioner: " << inverse_velocity_block_cheap.n_iterations()
                           << '+'
