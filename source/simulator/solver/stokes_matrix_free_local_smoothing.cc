@@ -117,7 +117,7 @@ namespace aspect
 
           if (!do_solve_schur_complement)
             {
-              Op_BC_invBT.vmult(ptmp, src);
+              mp_preconditioner.vmult(ptmp, src);
               n_iterations_ += 1;
             }
           else
@@ -156,12 +156,12 @@ namespace aspect
 
           if (!do_solve_schur_complement)
             {
-              Op_BC_invBT.vmult(dst, ptmp2);
+              mp_preconditioner.vmult(dst, ptmp2);
               n_iterations_ += 1;
             }
           else
             {
-              SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
+              SolverControl solver_control(5000, ptmp.l2_norm() * solver_tolerance, false, true);
               SolverCG<VectorType> solver(solver_control);
               dst = 0;
               solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
