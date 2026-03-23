@@ -493,11 +493,10 @@ namespace aspect
     B_block.set_cell_data(active_cell_data);
     BT_block.set_cell_data(active_cell_data);
 
-    if (this->get_parameters().n_expensive_stokes_solver_steps > 0)
-      {
+    
         A_block_matrix.set_cell_data(active_cell_data);
         Schur_complement_block_matrix.set_cell_data(active_cell_data);
-      }
+      
 
     const unsigned int n_levels = this->get_triangulation().n_global_levels();
     level_cell_data.resize(0,n_levels-1);
