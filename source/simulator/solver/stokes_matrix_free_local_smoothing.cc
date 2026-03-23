@@ -116,20 +116,15 @@ namespace aspect
           ptmp2.reinit(src);
           PrimitiveVectorMemory<VectorType> mem;
 
-          if (!do_solve_schur_complement)
-            {
-              mp_preconditioner.vmult(ptmp, src);
-              n_iterations_ += 1;
-            }
-          else
-            {
+       
+          
 
               SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
               SolverCG<VectorType> solver(solver_control,mem);
               ptmp = 0;
               solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
-            }
+            
 
           {
             dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -156,20 +151,13 @@ namespace aspect
             ptmp2 = block_dst.block(1);
           }
 
-          if (!do_solve_schur_complement)
-            {
-              mp_preconditioner.vmult(dst, ptmp2);
-              n_iterations_ += 1;
-            }
-          else
-            {
-              SolverControl solver_control(5000, ptmp2.l2_norm() * solver_tolerance, false, true);
-              SolverCG<VectorType> solver(solver_control,mem);
+       
+              solver_control.set_tolerance(1e-6*ptmp.l2_norm());
               dst = 0;
               solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
-            }
         }
+        
       catch (const std::exception &exc)
         {
           Utilities::throw_linear_solver_failure_exception("iterative (DiagBFBT) solver",
