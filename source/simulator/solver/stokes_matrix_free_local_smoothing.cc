@@ -151,7 +151,7 @@ namespace aspect
           }
 
        
-              solver_control.set_tolerance(1e-6*ptmp.l2_norm());
+              solver_control.set_tolerance(1e-6*ptmp2.l2_norm());
               dst = 0;
               solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
@@ -1377,12 +1377,18 @@ namespace aspect
     if (this->get_parameters().use_bfbt)
       {
         A_block_matrix.compute_diagonal();
+        Schur_complement_block_matrix.compute_diagonal();
+
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
-
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, GMGPreconditioner>;
+        const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
+        using DiagPreconditionerType=typename internal::DiagBFBT< StokesMatrixType,ABlockMatrixType,
+        BBlockOperatorType,BTBlockOperatorType,VectorType,GMGPreconditioner>::DiagonalPreconditioner;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, DiagPreconditionerType>;
+        DiagPreconditionerType diag_prec(diag_mp);
+        
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      prec_Schur,
+                                      diag_prec,
                                       /*do_solve_schur_complement*/ true,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1392,7 +1398,7 @@ namespace aspect
                                       BT_block); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          prec_Schur,
+                                          diag_prec,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
