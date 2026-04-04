@@ -13,7 +13,7 @@ for averaging in none; do # arithmetic/geometric/harmonic average
         echo "end" >> current.prm
         echo "subsection Solver parameters">>current.prm
 		echo "subsection Stokes solver parameters">>current.prm
-			echo "set Stokes solver type= block AMG">>current.prm
+			echo "set Stokes solver type= block GMG">>current.prm
 			echo "set Use full A block as preconditioner=true">>current.prm
 			echo "set Use weighted BFBT for Schur complement=true">>current.prm
 			echo "set Number of cheap Stokes solver steps=500">>current.prm
@@ -31,7 +31,7 @@ for averaging in none; do # arithmetic/geometric/harmonic average
 	echo "end">>current.prm
 
 	current_model="averaging${averaging}_nsinkers${nsinkers}_viscosity${viscosity}_refinement${refinement}"
-        echo "set Output directory = /home/qxhoang/aspect/benchmarks/nsinker/diag_A_mem_fix/output-${current_model}" >> current.prm
+        echo "set Output directory = home/quang-hoang/Documents/aspect/benchmarks/nsinker/diag_A_diag_mp/output-${current_model}" >> current.prm
         echo "Starting ${current_model}"
         cat nsinker.prm current.prm | mpirun -np 32 ./aspect-release --
       done
