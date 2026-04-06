@@ -403,18 +403,7 @@ namespace aspect
                    const VectorType &src) const override;
 
         unsigned int n_iterations() const override;
-        class DiagonalPreconditioner{
-          public:
-          DiagonalPreconditioner(const dealii::DiagonalMatrix<VectorType> &diagonal_matrix):
-          diagonal_matrix(diagonal_matrix)
-          {}
-          void vmult(VectorType &dst, const VectorType &src) const{
-            diagonal_matrix.vmult(dst,src);
-          }
-          private:
-          const dealii::DiagonalMatrix<VectorType> &diagonal_matrix;
-        };
-
+    
       private:
         mutable unsigned int n_iterations_;
         const PreconditionerMp &mp_preconditioner;
