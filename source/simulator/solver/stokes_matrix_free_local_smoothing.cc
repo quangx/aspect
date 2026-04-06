@@ -1381,13 +1381,10 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
-        using DiagPreconditionerType=typename internal::DiagBFBT< StokesMatrixType,ABlockMatrixType,
-        BBlockOperatorType,BTBlockOperatorType,VectorType,GMGPreconditioner>::DiagonalPreconditioner;
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, DiagPreconditionerType>;
-        DiagPreconditionerType diag_prec(diag_mp);
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, dealii::DiagonalMatrix<VectorType>>;
         
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      diag_prec,
+                                      diag_mp,
                                       /*do_solve_schur_complement*/ true,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1397,7 +1394,7 @@ namespace aspect
                                       BT_block); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          diag_prec,
+                                          diag_mp,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
