@@ -47,6 +47,33 @@ namespace aspect
 
   namespace internal
   {
+    template<class VectorType>
+    struct Nullspace
+    {
+      std::vector<VectorType> basis;
+    };
+
+
+
+
+    template<typename Range,
+             typename Domain,
+             typename Payload>
+    LinearOperator<Range, Domain, Payload> remove_mean_value(LinearOperator<Range,Domain,Payload> &exemplar)
+    {
+      LinearOperator<Range, Domain, Payload> return_op;
+
+      return_op.reinit_range_vector  = exemplar.reinit_range_vector;
+      return_op.reinit_domain_vector = exemplar.reinit_domain_vector;
+
+      return_op.vmult = [&](Range &dest, const Domain &src)
+      {
+
+        dest = src;
+        dest.add(-dest.mean_value());
+      };
+      return return_op;
+    }
 
 
     template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
@@ -108,6 +135,34 @@ namespace aspect
         {
           BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
           Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
+          dealii::LinearOperator<VectorType> op_BC_invBT;
+          op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_BC_invBT.reinit_domain_vector=[&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_BC_invBT.vmult=[&](VectorType &dst, const VectorType &src)
+          {
+            Op_BC_invBT.vmult(dst,src);
+          };
+
+          dealii::LinearOperator<VectorType> op_preconditioner;
+          op_preconditioner.reinit_range_vector = [&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_preconditioner.reinit_domain_vector = [&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_preconditioner.vmult = [&](VectorType &dst, const VectorType &src)
+          {
+            mp_preconditioner.vmult(dst, src);
+          };
+          auto rmv=remove_mean_value<>(op_BC_invBT);
 
           VectorType ptmp;
           VectorType ptmp2;
@@ -115,16 +170,16 @@ namespace aspect
           ptmp2.reinit(src);
           PrimitiveVectorMemory<VectorType> mem;
 
-       
-          
+
+
           VectorType rhs1=src; //nullspace removal
           rhs1.add(-rhs1.mean_value());
-              SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-              SolverCG<VectorType> solver(solver_control,mem);
-              ptmp = 0;
-              solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
-              n_iterations_ += solver_control.last_step();
-            
+          SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
+          SolverCG<VectorType> solver(solver_control,mem);
+          ptmp = 0;
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, rmv*op_preconditioner);
+          n_iterations_ += solver_control.last_step();
+
 
           {
             dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -153,12 +208,12 @@ namespace aspect
 
           VectorType rhs2=ptmp2;
           rhs2.add(-rhs2.mean_value());
-              solver_control.set_tolerance(1e-6*rhs2.l2_norm());
-              dst = 0;
-              solver.solve(Op_BC_invBT, dst, rhs2, mp_preconditioner);
-              n_iterations_ += solver_control.last_step();
+          solver_control.set_tolerance(1e-6*rhs2.l2_norm());
+          dst = 0;
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, rmv*op_preconditioner);
+          n_iterations_ += solver_control.last_step();
         }
-        
+
       catch (const std::exception &exc)
         {
           Utilities::throw_linear_solver_failure_exception("iterative (DiagBFBT) solver",
@@ -495,10 +550,10 @@ namespace aspect
     B_block.set_cell_data(active_cell_data);
     BT_block.set_cell_data(active_cell_data);
 
-    
-        A_block_matrix.set_cell_data(active_cell_data);
-        Schur_complement_block_matrix.set_cell_data(active_cell_data);
-      
+
+    A_block_matrix.set_cell_data(active_cell_data);
+    Schur_complement_block_matrix.set_cell_data(active_cell_data);
+
 
     const unsigned int n_levels = this->get_triangulation().n_global_levels();
     level_cell_data.resize(0,n_levels-1);
@@ -1385,7 +1440,7 @@ namespace aspect
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, dealii::DiagonalMatrix<VectorType>>;
-        
+
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       diag_mp,
                                       /*do_solve_schur_complement*/ true,
