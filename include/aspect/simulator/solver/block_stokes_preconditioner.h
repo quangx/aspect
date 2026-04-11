@@ -403,7 +403,7 @@ namespace aspect
                    const VectorType &src) const override;
 
         unsigned int n_iterations() const override;
-    
+
       private:
         mutable unsigned int n_iterations_;
         const PreconditionerMp &mp_preconditioner;
