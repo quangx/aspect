@@ -117,8 +117,9 @@ namespace aspect
 
        
           
-
-              SolverControl solver_control(5000, src.l2_norm() * solver_tolerance, false, true);
+          VectorType rhs1=src; //nullspace removal
+          rhs1.add(-rhs1.mean_value());
+              SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
               SolverCG<VectorType> solver(solver_control,mem);
               ptmp = 0;
               solver.solve(Op_BC_invBT, ptmp, src, mp_preconditioner);
@@ -150,10 +151,11 @@ namespace aspect
             ptmp2 = block_dst.block(1);
           }
 
-       
-              solver_control.set_tolerance(1e-6*ptmp2.l2_norm());
+          VectorType rhs2=ptmp2;
+          rhs2.add(-rhs2.mean_value());
+              solver_control.set_tolerance(1e-6*rhs2.l2_norm());
               dst = 0;
-              solver.solve(Op_BC_invBT, dst, ptmp2, mp_preconditioner);
+              solver.solve(Op_BC_invBT, dst, rhs2, mp_preconditioner);
               n_iterations_ += solver_control.last_step();
         }
         
