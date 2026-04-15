@@ -124,6 +124,16 @@ namespace aspect
         B_operator(B_operator),
         BT_operator(BT_operator)
     {
+      std::cout << "diag_A_inv: ";
+      for (auto i : diag_A_inv.locally_owned_elements())
+        std::cout << diag_A_inv[i] << " ";
+      std::cout << std::endl;
+
+      const auto &diag_mp_vec = mp_preconditioner.get_vector();
+      std::cout << "diag_mp_inv: ";
+      for (auto i : diag_mp_vec.locally_owned_elements())
+        std::cout << diag_mp_vec[i] << " ";
+      std::cout << std::endl;
 
     }
 
