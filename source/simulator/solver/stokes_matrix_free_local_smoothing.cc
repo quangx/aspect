@@ -185,25 +185,27 @@ namespace aspect
           VectorType rhs1=src; //nullspace removal
           rhs1.add(-rhs1.mean_value());
 
-          //DEBUG CODE
-          std::cout<<"rhs1 before solve:";
-          for(auto i : rhs1.locally_owned_elements()){
-            std::cout<<rhs1[i]<<" ";
-          }
-          std::cout<<std::endl;
+          // //DEBUG CODE
+          // std::cout<<"rhs1 before solve:";
+          // for(auto i : rhs1.locally_owned_elements()){
+          //   std::cout<<rhs1[i]<<" ";
+          // }
+          // std::cout<<std::endl;
 
+          //DEBUG with identity
+          dealii::PreconditionIdentity identity;
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, rmv*op_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, identity);
           n_iterations_ += solver_control.last_step();
 
-          //DEBUG CODE
-          std::cout<<"ptmp after first solve: ";
-          for(auto i: ptmp.locally_owned_elements()){
-            std::cout<<ptmp[i]<<" ";
-          }
-          std::cout<<std::endl;
+          // //DEBUG CODE
+          // std::cout<<"ptmp after first solve: ";
+          // for(auto i: ptmp.locally_owned_elements()){
+          //   std::cout<<ptmp[i]<<" ";
+          // }
+          // std::cout<<std::endl;
 
 
           {
@@ -234,26 +236,26 @@ namespace aspect
           VectorType rhs2=ptmp2;
           rhs2.add(-rhs2.mean_value());
 
-          //DEBUG CODE
+          // //DEBUG CODE
 
-          std::cout<<"rhs 2 before solve: ";
-          for(auto i: rhs2.locally_owned_elements()){
-            std::cout<<rhs2[i]<<" ";
-          }
-          std::cout<<std::endl;
+          // std::cout<<"rhs 2 before solve: ";
+          // for(auto i: rhs2.locally_owned_elements()){
+          //   std::cout<<rhs2[i]<<" ";
+          // }
+          // std::cout<<std::endl;
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, rmv*op_preconditioner);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, identity);
           n_iterations_ += solver_control.last_step();
 
-          //DEBUG CODE
-          std::cout<<"dst after second solve: ";
-          for(auto i: dst.locally_owned_elements()){
-            std::cout<<dst[i]<<" ";
+          // //DEBUG CODE
+          // std::cout<<"dst after second solve: ";
+          // for(auto i: dst.locally_owned_elements()){
+          //   std::cout<<dst[i]<<" ";
 
-          }
-          std::cout<<std::endl;
+          // }
+          // std::cout<<std::endl;
         }
 
       catch (const std::exception &exc)
