@@ -371,7 +371,7 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
     };
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
     class DiagBFBT: public SchurComplementOperator<VectorType>
     {
       public:
@@ -389,6 +389,7 @@ namespace aspect
          * @param A_operator The velocity block operator.
          * @param B_operator The B block operator.
          * @param BT_operator The B^T block operator.
+         * @param mp_matrix Pressure mass matrix used as preconditioner for BC^{-1}B^T.
          */
         DiagBFBT(const PreconditionerMp &mp_preconditioner,
                  const bool do_solve_schur_complement,
@@ -397,7 +398,8 @@ namespace aspect
                  const StokesMatrixType &system_matrix,
                  const AOperatorType &A_operator,
                  const BOperatorType &B_operator,
-                 const BTOperatorType &BT_operator);
+                 const BTOperatorType &BT_operator,
+                 const SchurComplementMatrixType &mp_matrix);
 
         void vmult(VectorType &dst,
                    const VectorType &src) const override;
@@ -414,6 +416,7 @@ namespace aspect
         const AOperatorType &A_operator;
         const BOperatorType &B_operator;
         const BTOperatorType &BT_operator;
+        const SchurComplementMatrixType &mp_matrix;
     };
 
 

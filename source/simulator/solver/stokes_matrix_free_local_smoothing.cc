@@ -105,8 +105,8 @@ namespace aspect
 
 
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-    DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::DiagBFBT(
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType,class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::DiagBFBT(
       const PreconditionerMp &mp_preconditioner,
       const bool do_solve_schur_complement,
       const double solver_tolerance,
@@ -114,7 +114,8 @@ namespace aspect
       const StokesMatrixType &system_matrix,
       const AOperatorType &A_operator,
       const BOperatorType &B_operator,
-      const BTOperatorType &BT_operator)
+      const BTOperatorType &BT_operator,
+      const SchurComplementMatrixType &mp_matrix)
       : n_iterations_(0),
         mp_preconditioner(mp_preconditioner),
         do_solve_schur_complement(do_solve_schur_complement),
@@ -123,7 +124,8 @@ namespace aspect
         system_matrix(system_matrix),
         A_operator(A_operator),
         B_operator(B_operator),
-        BT_operator(BT_operator)
+        BT_operator(BT_operator),
+        mp_matrix(mp_matrix)
     {
       // std::cout << "diag_A_inv: ";
       // for (auto i : diag_A_inv.locally_owned_elements())
@@ -138,8 +140,8 @@ namespace aspect
 
     }
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-    void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::vmult(
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::vmult(
       VectorType &dst, const VectorType &src) const
     {
       try
@@ -160,18 +162,21 @@ namespace aspect
             Op_BC_invBT.vmult(dst,src);
           };
 
-          dealii::LinearOperator<VectorType> op_preconditioner;
-          op_preconditioner.reinit_range_vector = [&](VectorType &v, bool)
-          {
+          dealii::LinearOperator<VectorType> op_mp_preconditioner;
+          op_mp_preconditioner.reinit_range_vector=[&](VectorType &v, bool){
             v.reinit(src);
           };
-          op_preconditioner.reinit_domain_vector = [&](VectorType &v, bool)
-          {
+          op_mp_preconditioner.reinit_domain_vector=[&](VectorType &v, bool){
             v.reinit(src);
           };
-          op_preconditioner.vmult = [&](VectorType &dst, const VectorType &src)
-          {
-            mp_preconditioner.vmult(dst, src);
+
+          //precondition with solve
+          op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src){
+            PrimitiveVectorMemory<VectorType>  mp_mem;
+            SolverControl solver_control(1000,src.l2_norm()*1e-6);
+            SolverCG<VectorType> solver(solver_control,mp_mem);
+            dst=0.0;
+            solver.solve(mp_matrix,dst,src,mp_preconditioner);
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
 
@@ -194,11 +199,10 @@ namespace aspect
           // std::cout<<std::endl;
 
           //DEBUG with identity
-          dealii::PreconditionIdentity identity;
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, identity);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -247,7 +251,7 @@ namespace aspect
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, identity);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -269,8 +273,8 @@ namespace aspect
         }
     }
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class VectorType, class PreconditionerMp>
-    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, VectorType, PreconditionerMp>::n_iterations() const
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::n_iterations() const
     {
       return n_iterations_;
     }
@@ -1482,7 +1486,7 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, VectorType, dealii::DiagonalMatrix<VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       diag_mp,
@@ -1492,7 +1496,8 @@ namespace aspect
                                       stokes_matrix,
                                       A_block_matrix,
                                       B_block,
-                                      BT_block); //hack - the vmults do not seem to vonverge.
+                                      BT_block,
+                                    Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           diag_mp,
@@ -1502,7 +1507,8 @@ namespace aspect
                                           stokes_matrix,
                                           A_block_matrix,
                                           B_block,
-                                          BT_block);
+                                          BT_block,
+                                        Schur_complement_block_matrix);
       }
     else
       {
