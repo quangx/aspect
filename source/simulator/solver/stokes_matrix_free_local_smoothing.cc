@@ -201,7 +201,8 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          op_mp_preconditioner.vmult(ptmp,rhs1);
+          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -250,7 +251,8 @@ namespace aspect
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          // solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          op_mp_preconditioner.vmult(dst,rhs2);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
