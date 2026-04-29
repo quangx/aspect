@@ -201,8 +201,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          op_mp_preconditioner.vmult(ptmp,rhs1);
-          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -251,8 +250,7 @@ namespace aspect
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          // solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
-          op_mp_preconditioner.vmult(dst,rhs2);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -1489,10 +1487,10 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      diag_mp,
+                                      prec_Schur,
                                       /*do_solve_schur_complement*/ true,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1503,7 +1501,7 @@ namespace aspect
                                     Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          diag_mp,
+                                          prec_Schur,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
