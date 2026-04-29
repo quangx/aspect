@@ -76,8 +76,8 @@ namespace aspect
     }
 
 
-    template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
-    void BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+    template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType>
+    void BC_invBT_Operator<dim,degree_v,StokesMatrixType, BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
                                                                                    const dealii::LinearAlgebra::distributed::Vector<double> &src) const
     {
       dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -104,8 +104,8 @@ namespace aspect
 
 
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType,class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
-    DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::DiagBFBT(
+    template <int dim, int degree_v,class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType,class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    DiagBFBT<dim, degree_v, StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::DiagBFBT(
       const PreconditionerMp &mp_preconditioner,
       const bool do_solve_schur_complement,
       const double solver_tolerance,
@@ -139,13 +139,13 @@ namespace aspect
 
     }
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
-    void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::vmult(
+    template <int dim, int degree_v,class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    void DiagBFBT<dim,degree_v,StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::vmult(
       VectorType &dst, const VectorType &src) const
     {
       try
         {
-          BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
+          BC_invBT_Operator<dim,degree_v,StokesMatrixType, BOperatorType, BTOperatorType>
           Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
@@ -272,8 +272,8 @@ namespace aspect
         }
     }
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
-    unsigned int DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::n_iterations() const
+    template <int dim, int degree_v, class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
+    unsigned int DiagBFBT<dim, degree_v, StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::n_iterations() const
     {
       return n_iterations_;
     }
@@ -1487,7 +1487,7 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<dim, velocity_degree, StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       diag_mp,

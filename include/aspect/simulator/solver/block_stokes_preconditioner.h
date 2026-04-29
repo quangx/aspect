@@ -349,7 +349,7 @@ namespace aspect
 
 
 
-    template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
+    template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType>
     class BC_invBT_Operator
     {
       public:
@@ -371,7 +371,7 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
     };
 
-    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
+    template <int dim, int degree_v, class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
     class DiagBFBT: public SchurComplementOperator<VectorType>
     {
       public:
