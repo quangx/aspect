@@ -366,6 +366,7 @@ namespace aspect
         {}
         void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
                    const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
+        dealii::LinearAlgebra::distributed::Vector<double> compute_diagonal() const;
       private:
         const StokesMatrixType &system_matrix;
         const BOperatorType &B_operator;
