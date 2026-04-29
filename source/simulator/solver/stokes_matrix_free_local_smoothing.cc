@@ -114,7 +114,8 @@ namespace aspect
       const AOperatorType &A_operator,
       const BOperatorType &B_operator,
       const BTOperatorType &BT_operator,
-      const SchurComplementMatrixType &mp_matrix)
+      const SchurComplementMatrixType &mp_matrix,
+      const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data)
       : n_iterations_(0),
         mp_preconditioner(mp_preconditioner),
         do_solve_schur_complement(do_solve_schur_complement),
@@ -124,7 +125,8 @@ namespace aspect
         A_operator(A_operator),
         B_operator(B_operator),
         BT_operator(BT_operator),
-        mp_matrix(mp_matrix)
+        mp_matrix(mp_matrix),
+        cell_data(cell_data)
     {
       // std::cout << "diag_A_inv: ";
       // for (auto i : diag_A_inv.locally_owned_elements())
@@ -146,7 +148,7 @@ namespace aspect
       try
         {
           BC_invBT_Operator<dim,degree_v,StokesMatrixType, BOperatorType, BTOperatorType>
-          Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
+          Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv,cell_data);
           dealii::LinearOperator<VectorType> op_BC_invBT;
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
           {
@@ -1498,7 +1500,8 @@ namespace aspect
                                       A_block_matrix,
                                       B_block,
                                       BT_block,
-                                    Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
+                                    Schur_complement_block_matrix,
+                                  active_cell_data); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           diag_mp,
@@ -1509,7 +1512,8 @@ namespace aspect
                                           A_block_matrix,
                                           B_block,
                                           BT_block,
-                                        Schur_complement_block_matrix);
+                                        Schur_complement_block_matrix,
+                                      active_cell_data);
       }
     else
       {

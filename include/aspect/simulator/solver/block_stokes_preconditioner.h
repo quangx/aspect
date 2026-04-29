@@ -356,11 +356,13 @@ namespace aspect
         BC_invBT_Operator(const StokesMatrixType &system_matrix,
                           const BOperatorType &B_operator,
                           const BTOperatorType &BT_operator,
-                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
+                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                        const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data):
           system_matrix(system_matrix),
           B_operator(B_operator),
           BT_operator(BT_operator),
-          diag_A_inv(diag_A_inv)
+          diag_A_inv(diag_A_inv),
+          cell_data(cell_data)
         {}
         void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
                    const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
@@ -369,6 +371,7 @@ namespace aspect
         const BOperatorType &B_operator;
         const BTOperatorType &BT_operator;
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+        const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data;
     };
 
     template <int dim, int degree_v, class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
@@ -399,7 +402,8 @@ namespace aspect
                  const AOperatorType &A_operator,
                  const BOperatorType &B_operator,
                  const BTOperatorType &BT_operator,
-                 const SchurComplementMatrixType &mp_matrix);
+                 const SchurComplementMatrixType &mp_matrix,
+                 const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data);
 
         void vmult(VectorType &dst,
                    const VectorType &src) const override;
@@ -417,6 +421,7 @@ namespace aspect
         const BOperatorType &B_operator;
         const BTOperatorType &BT_operator;
         const SchurComplementMatrixType &mp_matrix;
+        const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data;
     };
 
 
