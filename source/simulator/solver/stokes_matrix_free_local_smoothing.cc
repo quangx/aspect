@@ -201,16 +201,9 @@ namespace aspect
         mp_matrix(mp_matrix),
         cell_data(cell_data)
     {
-      // std::cout << "diag_A_inv: ";
-      // for (auto i : diag_A_inv.locally_owned_elements())
-      //   std::cout << diag_A_inv[i] << " ";
-      // std::cout << std::endl;
-
-      // const auto &diag_mp_vec = mp_preconditioner.get_vector();
-      // std::cout << "diag_mp_inv: ";
-      // for (auto i : diag_mp_vec.locally_owned_elements())
-      //   std::cout << diag_mp_vec[i] << " ";
-      // std::cout << std::endl;
+      BC_invBT_Operator<dim,degree_v,StokesMatrixType,BOperatorType,BTOperatorType> Op_BC_invBT(system_matrix,
+      B_operator,BT_operator,diag_A_inv,cell_data);
+      bc_invbt_diagonal.reinit(Op_BC_invBT.compute_diagonal());
 
     }
 
@@ -276,7 +269,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, bc_invbt_diagonal);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -325,7 +318,7 @@ namespace aspect
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, bc_invbt_diagonal);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE

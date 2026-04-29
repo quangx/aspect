@@ -423,6 +423,7 @@ namespace aspect
         const BTOperatorType &BT_operator;
         const SchurComplementMatrixType &mp_matrix;
         const MatrixFreeStokesOperators::OperatorCellData<dim,double> &cell_data;
+        dealii::DiagonalMatrix<VectorType> bc_invbt_diagonal;
     };
 
 
