@@ -129,10 +129,10 @@ namespace aspect
         for(unsigned int i=0;i<n_p_dofs_per_cell;++i){
           for(unsigned int j=0;j<n_p_dofs_per_cell;++j){
             if(i==j){
-              dealii::make_vectorized_array(1.0);
+              p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(1.0);
             }
             else{
-              dealii::make_vectorized_array(0.0);
+              p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
             }
           }
           p_eval.evaluate(dealii::EvaluationFlags::values);
@@ -141,8 +141,9 @@ namespace aspect
             dealii::SymmetricTensor<2,dim,dealii::VectorizedArray<double>> velocity_terms;
             for(unsigned int d=0;d<dim;++d){
               velocity_terms[d][d]-=cell_data.pressure_scaling*val_p;
-              u_eval.submit_symmetric_gradient(velocity_terms,q);
             }
+            u_eval.submit_symmetric_gradient(velocity_terms,q);
+
           }
           u_eval.integrate(dealii::EvaluationFlags::gradients);
 
