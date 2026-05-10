@@ -479,6 +479,85 @@ namespace aspect
         const OperatorCellData<dim,number> *cell_data;
     };
 
+
+    /**
+     * Operator for the pressure Laplace operator used in the BFBT preconditioner. Matrix is weighted by
+     * the inverse of the viscosity.
+     */
+    template <int dim, int degree_p, typename number>
+    class PressureLaplaceOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+
+        /**
+         * Constructor
+         */
+        PressureLaplaceOperator ();
+
+        /**
+         * Reset the object.
+         */
+        void clear () override;
+
+        /**
+         * Initialize the MatrixFree object given in @p mf_storage and use that to
+         * initialize this operator.
+         */
+        void reinit(const Mapping<dim>              &mapping,
+                    const DoFHandler<dim>           &dof_handler_v,
+                    const DoFHandler<dim>           &dof_handler_p,
+                    const AffineConstraints<number> &constraints_v,
+                    const AffineConstraints<number> &constraints_p,
+                    std::shared_ptr<MatrixFree<dim,double>> mf_storage,
+                    const unsigned int level = numbers::invalid_unsigned_int);
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function contains the inner-most operation done on a single cell
+         */
+        void inner_cell_operation(FEEvaluation<dim,
+                                  degree_p,
+                                  degree_p+2,
+                                  1,
+                                  number> &pressure) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
+
+
+
     /**
      * Operator for the A block of the Stokes matrix. The same class is used for both
      * active and level mesh operators.

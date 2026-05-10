@@ -802,6 +802,186 @@ namespace aspect
   }
 
 
+  template <int dim, int degree_p, typename number>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::PressureLaplaceOperator ()
+    :
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
+  {}
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::clear ()
+  {
+    this->cell_data = nullptr;
+    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::clear();
+  }
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::reinit(const Mapping<dim>              &mapping,
+                                                                                  const DoFHandler<dim>           &dof_handler_v,
+                                                                                  const DoFHandler<dim>           &dof_handler_p,
+                                                                                  const AffineConstraints<number> &constraints_v,
+                                                                                  const AffineConstraints<number> &constraints_p,
+                                                                                  std::shared_ptr<MatrixFree<dim,double>> mf_storage,
+                                                                                  const unsigned int level)
+  {
+    typename MatrixFree<dim, number>::AdditionalData data;
+    data.mapping_update_flags =
+      update_quadrature_points /*| update_gradients*/ | update_values;
+    data.mg_level = level;
+
+    data.tasks_parallel_scheme =
+      MatrixFree<dim,double>::AdditionalData::none;
+    AffineConstraints<number> dummy;
+
+    mf_storage->reinit(mapping,
+    std::vector< const DoFHandler< dim > *> {&dof_handler_v, &dof_handler_p},
+    std::vector< const AffineConstraints< number > *> {&constraints_v, &constraints_p} ,
+    QGauss<1>(degree_p+2), data);
+
+    this->initialize(mf_storage, std::vector< unsigned int > {1}, std::vector< unsigned int > {1});
+  }
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::
+  set_cell_data (const OperatorCellData<dim,number> &data)
+  {
+    this->cell_data = &data;
+  }
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  ::local_apply (const dealii::MatrixFree<dim, number>                 &data,
+                 dealii::LinearAlgebra::distributed::Vector<number>       &dst,
+                 const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                 const std::pair<unsigned int, unsigned int>           &cell_range) const
+  {
+    FEEvaluation<dim,degree_p,degree_p+2,1,number> pressure (data, /*dofh*/1);
+
+    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
+      {
+        pressure.reinit (cell);
+        pressure.gather_evaluate (src, EvaluationFlags::gradients);
+        this->inner_cell_operation(pressure);
+        pressure.integrate_scatter (EvaluationFlags::gradients, dst);
+      }
+
+  }
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  ::inner_cell_operation(FEEvaluation<dim,
+                         degree_p,
+                         degree_p+2,
+                         1,
+                         number> &pressure) const
+  {
+    const bool use_viscosity_at_quadrature_points
+      = (cell_data->viscosity.size(1) == pressure.n_q_points);
+
+    const unsigned int cell = pressure.get_current_cell_index();
+    const unsigned int n_components_filled = this->get_matrix_free()->n_active_entries_per_cell_batch(cell);
+
+    VectorizedArray<number> prefactor;
+
+    // The /= operator for VectorizedArray results in a floating point operation
+    // (divide by 0) since the (*viscosity)(cell) array is not completely filled.
+    // Therefore, we need to divide each entry manually.
+    if (!use_viscosity_at_quadrature_points)
+      {
+        for (unsigned int c=0; c<n_components_filled; ++c)
+          prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, 0)[c];
+      }
+
+    for (const unsigned int q : pressure.quadrature_point_indices())
+      {
+        // Only update the viscosity if a Q1 projection is used.
+        if (use_viscosity_at_quadrature_points)
+          {
+            for (unsigned int c=0; c<n_components_filled; ++c)
+              prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, q)[c];
+          }
+
+        pressure.submit_gradient(prefactor*pressure.get_gradient(q), q);
+      }
+  }
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  ::apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+               const dealii::LinearAlgebra::distributed::Vector<number> &src) const
+  {
+    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::
+    data->cell_loop(&PressureLaplaceOperator::local_apply, this, dst, src);
+  }
+
+
+
+  template <int dim, int degree_p, typename number>
+  void
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  ::compute_diagonal ()
+  {
+    this->inverse_diagonal_entries =
+      std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
+    this->diagonal_entries =
+      std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
+
+    dealii::LinearAlgebra::distributed::Vector<number> &inverse_diagonal =
+      this->inverse_diagonal_entries->get_vector();
+    dealii::LinearAlgebra::distributed::Vector<number> &diagonal =
+      this->diagonal_entries->get_vector();
+
+    this->data->initialize_dof_vector(inverse_diagonal, /*dofh*/1);
+    this->data->initialize_dof_vector(diagonal, /*dofh*/1);
+
+    MatrixFreeTools::compute_diagonal<dim,degree_p,degree_p+2,1,number,VectorizedArray<number>,dealii::LinearAlgebra::distributed::Vector<number>>(
+      *(this->get_matrix_free()),
+      diagonal,
+      [&](FEEvaluation<dim,
+          degree_p,
+          degree_p+2,
+          1,
+          number> &pressure)
+    {
+      pressure.evaluate(EvaluationFlags::values);
+      this->inner_cell_operation(pressure);
+      pressure.integrate(EvaluationFlags::values);
+    },
+    1 /* dofhandler */);
+
+    this->set_constrained_entries_to_one(diagonal);
+    inverse_diagonal = diagonal;
+
+    // Finally loop over all of the computed diagonal elements and invert them.
+    // The following loop relies on the fact that inverse_diagonal.begin()/end()
+    // iterates only over the *locally owned* elements of the vector in which
+    // we store inverse_diagonal.
+    for (auto &local_element : inverse_diagonal)
+      {
+        Assert(local_element > 0.,
+               ExcMessage("No diagonal entry in a positive definite operator "
+                          "should be zero or negative."));
+        local_element = 1./local_element;
+      }
+  }
+
 
   /**
    * Velocity block operator
@@ -1037,6 +1217,8 @@ namespace aspect
   template class MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>;\
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,2,GMGNumberType>; \
+  template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>; \
+  template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
 
   ASPECT_INSTANTIATE(INSTANTIATE)
