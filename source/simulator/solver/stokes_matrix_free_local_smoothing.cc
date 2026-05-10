@@ -204,7 +204,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(op_BC_invBT, ptmp, rhs1, mp_preconditioner);//op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -241,7 +241,7 @@ namespace aspect
           }
 
           VectorType rhs2=ptmp2;
-          rhs2.add(-rhs2.mean_value());
+          //rhs2.add(-rhs2.mean_value());
 
           // //DEBUG CODE
 
@@ -251,9 +251,9 @@ namespace aspect
           // }
           // std::cout<<std::endl;
 
-          solver_control.set_tolerance(1e-6*rhs2.l2_norm());
+          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          solver.solve(/*rmv**/op_BC_invBT, dst, rhs2, mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -1490,10 +1490,20 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
+
+        using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
+        PressureLaplaceOperatorType pressure_laplace_operator;
+        const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
+        pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
+        pressure_laplace_operator.set_cell_data(active_cell_data);
+        pressure_laplace_operator.compute_diagonal();
+        const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
+
+
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      prec_Schur,
+                                      diag_pressure_laplace,
                                       /*do_solve_schur_complement*/ true,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1504,7 +1514,7 @@ namespace aspect
                                       Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          prec_Schur,
+                                          diag_pressure_laplace,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
