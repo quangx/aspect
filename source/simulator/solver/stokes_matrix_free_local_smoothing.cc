@@ -162,15 +162,18 @@ namespace aspect
           };
 
           dealii::LinearOperator<VectorType> op_mp_preconditioner;
-          op_mp_preconditioner.reinit_range_vector=[&](VectorType &v, bool){
+          op_mp_preconditioner.reinit_range_vector=[&](VectorType &v, bool)
+          {
             v.reinit(src);
           };
-          op_mp_preconditioner.reinit_domain_vector=[&](VectorType &v, bool){
+          op_mp_preconditioner.reinit_domain_vector=[&](VectorType &v, bool)
+          {
             v.reinit(src);
           };
 
           //precondition with solve
-          op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src){
+          op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
+          {
             PrimitiveVectorMemory<VectorType>  mp_mem;
             SolverControl solver_control(1000,src.l2_norm()*1e-6);
             SolverCG<VectorType> solver(solver_control,mp_mem);
@@ -1498,7 +1501,7 @@ namespace aspect
                                       A_block_matrix,
                                       B_block,
                                       BT_block,
-                                    Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
+                                      Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_Schur,
@@ -1509,7 +1512,7 @@ namespace aspect
                                           A_block_matrix,
                                           B_block,
                                           BT_block,
-                                        Schur_complement_block_matrix);
+                                          Schur_complement_block_matrix);
       }
     else
       {
