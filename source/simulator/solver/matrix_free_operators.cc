@@ -953,9 +953,9 @@ namespace aspect
           1,
           number> &pressure)
     {
-      pressure.evaluate(EvaluationFlags::values);
+      pressure.evaluate(EvaluationFlags::gradients);
       this->inner_cell_operation(pressure);
-      pressure.integrate(EvaluationFlags::values);
+      pressure.integrate(EvaluationFlags::gradients);
     },
     1 /* dofhandler */);
 
