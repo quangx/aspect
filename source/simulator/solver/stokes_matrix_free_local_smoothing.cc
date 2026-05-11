@@ -191,8 +191,9 @@ namespace aspect
 
 
           VectorType rhs1=src; //nullspace removal
-          rhs1.add(-rhs1.mean_value());
-
+          std::cout << " mean_value before: " << rhs1.mean_value() << std::endl;
+          //rhs1.add(-rhs1.mean_value());
+          //std::cout << " mean_value after: " << rhs1.mean_value() << std::endl;
           // //DEBUG CODE
           // std::cout<<"rhs1 before solve:";
           // for(auto i : rhs1.locally_owned_elements()){
@@ -201,10 +202,12 @@ namespace aspect
           // std::cout<<std::endl;
 
           //DEBUG with identity
+          PreconditionIdentity identity;
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-          SolverCG<VectorType> solver(solver_control,mem);
+          SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(op_BC_invBT, ptmp, rhs1, mp_preconditioner);//op_mp_preconditioner);
+          solver.solve(Op_BC_invBT, ptmp, rhs1, mp_preconditioner);
+          std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -253,7 +256,10 @@ namespace aspect
 
           solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
-          solver.solve(/*rmv**/op_BC_invBT, dst, rhs2, mp_preconditioner);
+          solver.solve(Op_BC_invBT, dst, rhs2, mp_preconditioner);
+          //std::cout << "applying op_BC_invBT:" << std::endl;
+          //op_BC_invBT.vmult(dst,rhs2);
+          std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
