@@ -126,10 +126,10 @@ namespace aspect
         BT_operator(BT_operator),
         mp_matrix(mp_matrix)
     {
-      // std::cout << "diag_A_inv: ";
-      // for (auto i : diag_A_inv.locally_owned_elements())
-      //   std::cout << diag_A_inv[i] << " ";
-      // std::cout << std::endl;
+      std::cout << "diag_A_inv (matrix free): ";
+      for (auto i : diag_A_inv.locally_owned_elements())
+        std::cout << 1.0/diag_A_inv[i] << " ";
+      std::cout << std::endl;
 
       // const auto &diag_mp_vec = mp_preconditioner.get_vector();
       // std::cout << "diag_mp_inv: ";
@@ -188,7 +188,7 @@ namespace aspect
 
 
           VectorType rhs1=src; //nullspace removal
-          rhs1.add(-rhs1.mean_value());
+          // rhs1.add(-rhs1.mean_value());
 
           // //DEBUG CODE
           // std::cout<<"rhs1 before solve:";
@@ -201,7 +201,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(/*rmv**/op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
@@ -238,7 +238,7 @@ namespace aspect
           }
 
           VectorType rhs2=ptmp2;
-          rhs2.add(-rhs2.mean_value());
+          // rhs2.add(-rhs2.mean_value());
 
           // //DEBUG CODE
 
@@ -250,7 +250,7 @@ namespace aspect
 
           solver_control.set_tolerance(1e-6*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          solver.solve(/*rmv**/op_BC_invBT, dst, rhs2, op_mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           // //DEBUG CODE
