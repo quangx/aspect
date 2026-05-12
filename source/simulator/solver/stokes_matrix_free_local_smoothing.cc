@@ -126,10 +126,10 @@ namespace aspect
         BT_operator(BT_operator),
         mp_matrix(mp_matrix)
     {
-      std::cout << "diag_A_inv (matrix free): ";
-      for (auto i : diag_A_inv.locally_owned_elements())
-        std::cout << 1.0/diag_A_inv[i] << " ";
-      std::cout << std::endl;
+      // std::cout << "diag_A_inv (matrix free): ";
+      // for (auto i : diag_A_inv.locally_owned_elements())
+      //   std::cout << 1.0/diag_A_inv[i] << " ";
+      // std::cout << std::endl;
 
       // const auto &diag_mp_vec = mp_preconditioner.get_vector();
       // std::cout << "diag_mp_inv: ";

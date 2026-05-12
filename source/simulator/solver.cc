@@ -788,14 +788,14 @@ namespace aspect
 
         //DEBUG CODE print diag(A)
         LinearAlgebra::Vector diag_A_amg(system_matrix.block(0,0).locally_owned_range_indices(),this->mpi_communicator);
-        std::cout<<"diag_A (matrix based)";
-        for(auto i:diag_A_amg.locally_owned_elements()){
-          diag_A_amg[i]=system_matrix.block(0,0).diag_element(i);
-        }
-        for(auto i:diag_A_amg.locally_owned_elements()){
-          std::cout<<diag_A_amg[i]<<" ";
-        }
-        std::cout<<"\n";
+        // std::cout<<"diag_A (matrix based)";
+        // for(auto i:diag_A_amg.locally_owned_elements()){
+        //   diag_A_amg[i]=system_matrix.block(0,0).diag_element(i);
+        // }
+        // for(auto i:diag_A_amg.locally_owned_elements()){
+        //   std::cout<<diag_A_amg[i]<<" ";
+        // }
+        // std::cout<<"\n";
 
         // create a cheap preconditioner that consists of only a single V-cycle
         internal::InverseVelocityBlock<LinearAlgebra::PreconditionAMG, LinearAlgebra::Vector, LinearAlgebra::SparseMatrix> inverse_velocity_block_cheap(
