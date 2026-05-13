@@ -1479,6 +1479,9 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
+    using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
+    PressureLaplaceOperatorType pressure_laplace_operator;
+
     if (this->get_parameters().use_bfbt)
       {
         A_block_matrix.compute_diagonal();
@@ -1488,8 +1491,6 @@ namespace aspect
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
-        using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
-        PressureLaplaceOperatorType pressure_laplace_operator;
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
         pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
         pressure_laplace_operator.set_cell_data(active_cell_data);
