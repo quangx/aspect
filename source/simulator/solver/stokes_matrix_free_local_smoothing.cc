@@ -193,7 +193,7 @@ namespace aspect
 
           VectorType rhs1=src; //nullspace removal
           std::cout << " mean_value before: " << rhs1.mean_value() << std::endl;
-          //rhs1.add(-rhs1.mean_value());
+          rhs1.add(-rhs1.mean_value());
           //std::cout << " mean_value after: " << rhs1.mean_value() << std::endl;
           // //DEBUG CODE
           // std::cout<<"rhs1 before solve:";
@@ -210,14 +210,6 @@ namespace aspect
           solver.solve(Op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
-
-          // //DEBUG CODE
-          // std::cout<<"ptmp after first solve: ";
-          // for(auto i: ptmp.locally_owned_elements()){
-          //   std::cout<<ptmp[i]<<" ";
-          // }
-          // std::cout<<std::endl;
-
 
           {
             dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -245,7 +237,7 @@ namespace aspect
           }
 
           VectorType rhs2=ptmp2;
-          //rhs2.add(-rhs2.mean_value());
+          rhs2.add(-rhs2.mean_value());
 
           // //DEBUG CODE
 
@@ -1726,11 +1718,11 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
-                   AdditionalData(this->get_parameters().stokes_gmres_restart_length+2,
-                                  true));
+                   SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
+                                  /*,true*/));
 
             solver.solve (stokes_matrix,
                           solution_copy,
