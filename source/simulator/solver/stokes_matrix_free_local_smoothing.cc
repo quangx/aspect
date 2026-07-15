@@ -181,7 +181,7 @@ namespace aspect
 
 
           VectorType rhs1=src; //nullspace removal
-          std::cout << " mean_value before: " << rhs1.mean_value() << std::endl;
+          // std::cout << " mean_value before: " << rhs1.mean_value() << std::endl;
           rhs1.add(-rhs1.mean_value());
           //std::cout << " mean_value after: " << rhs1.mean_value() << std::endl;
           // //DEBUG CODE
