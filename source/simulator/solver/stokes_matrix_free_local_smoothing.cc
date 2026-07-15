@@ -127,17 +127,6 @@ namespace aspect
         BT_operator(BT_operator),
         mp_matrix(mp_matrix)
     {
-      // std::cout << "diag_A_inv: ";
-      // for (auto i : diag_A_inv.locally_owned_elements())
-      //   std::cout << diag_A_inv[i] << " ";
-      // std::cout << std::endl;
-
-      // const auto &diag_mp_vec = mp_preconditioner.get_vector();
-      // std::cout << "diag_mp_inv: ";
-      // for (auto i : diag_mp_vec.locally_owned_elements())
-      //   std::cout << diag_mp_vec[i] << " ";
-      // std::cout << std::endl;
-
     }
 
     template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
@@ -208,7 +197,7 @@ namespace aspect
           SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
           solver.solve(Op_BC_invBT, ptmp, rhs1, mp_preconditioner);
-          std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
+          // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
           {
@@ -239,29 +228,17 @@ namespace aspect
           VectorType rhs2=ptmp2;
           rhs2.add(-rhs2.mean_value());
 
-          // //DEBUG CODE
-
-          // std::cout<<"rhs 2 before solve: ";
-          // for(auto i: rhs2.locally_owned_elements()){
-          //   std::cout<<rhs2[i]<<" ";
-          // }
-          // std::cout<<std::endl;
+         
 
           solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
           solver.solve(Op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
-          std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
+          // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
-          // //DEBUG CODE
-          // std::cout<<"dst after second solve: ";
-          // for(auto i: dst.locally_owned_elements()){
-          //   std::cout<<dst[i]<<" ";
-
-          // }
-          // std::cout<<std::endl;
+          
         }
 
       catch (const std::exception &exc)
