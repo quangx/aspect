@@ -200,7 +200,8 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          mp_preconditioner.vmult(ptmp,rhs1);
+          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
@@ -236,7 +237,8 @@ namespace aspect
 
           solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          mp_preconditioner.vmult(dst,rhs2);
+          // solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
@@ -582,6 +584,8 @@ namespace aspect
 
     A_block_matrix.set_cell_data(active_cell_data);
     Schur_complement_block_matrix.set_cell_data(active_cell_data);
+    Laplace_block_matrix.set_cell_data(active_cell_data);
+    
 
 
     const unsigned int n_levels = this->get_triangulation().n_global_levels();
@@ -663,6 +667,7 @@ namespace aspect
         // Store viscosity tables and other data into the multigrid level matrix-free objects.
         mg_matrices_A_block[level].set_cell_data (level_cell_data[level]);
         mg_matrices_Schur_complement[level].set_cell_data (level_cell_data[level]);
+        mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
       }
 
     {
@@ -1174,9 +1179,17 @@ namespace aspect
     using MSmootherType = PreconditionChebyshev<GMGSchurComplementMatrixType,VectorType>;
     mg::SmootherRelaxation<MSmootherType, VectorType>
     mg_smoother_Schur(4);
+
+    using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
+    mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
+    mg_smoother_Laplace(4);
     {
       MGLevelObject<typename MSmootherType::AdditionalData> smoother_data_Schur;
+      MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
+
       smoother_data_Schur.resize(0, this->get_triangulation().n_global_levels()-1);
+      smoother_data_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
+
       for (unsigned int level = 0; level<this->get_triangulation().n_global_levels(); ++level)
         {
           if (level > 0)
@@ -1184,16 +1197,26 @@ namespace aspect
               smoother_data_Schur[level].smoothing_range = 15.;
               smoother_data_Schur[level].degree = 4;
               smoother_data_Schur[level].eig_cg_n_iterations = 10;
+
+                smoother_data_Laplace[level].smoothing_range = 15.;
+              smoother_data_Laplace[level].degree = 4;
+              smoother_data_Laplace[level].eig_cg_n_iterations = 10;
             }
           else
             {
               smoother_data_Schur[0].smoothing_range = 1e-3;
               smoother_data_Schur[0].degree = 8;
               smoother_data_Schur[0].eig_cg_n_iterations = 100;
+
+                smoother_data_Laplace[level].smoothing_range = 15.;
+              smoother_data_Laplace[level].degree = 4;
+              smoother_data_Laplace[level].eig_cg_n_iterations = 10;
             }
           smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
+          smoother_data_Laplace[level].preconditioner=mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
         }
       mg_smoother_Schur.initialize(mg_matrices_Schur_complement, smoother_data_Schur);
+      mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
     }
 
     // Estimate the eigenvalues for the Chebyshev smoothers.
@@ -1209,9 +1232,11 @@ namespace aspect
         VectorType temp_pressure;
         mg_matrices_A_block[level].initialize_dof_vector(temp_velocity);
         mg_matrices_Schur_complement[level].initialize_dof_vector(temp_pressure);
+        mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
 
         mg_smoother_A[level].estimate_eigenvalues(temp_velocity);
         mg_smoother_Schur[level].estimate_eigenvalues(temp_pressure);
+        mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
 
         if (level==0)
           {
@@ -1230,6 +1255,10 @@ namespace aspect
     //Schur complement matrix GMG
     MGCoarseGridApplySmoother<VectorType> mg_coarse_Schur;
     mg_coarse_Schur.initialize(mg_smoother_Schur);
+
+    //Pressure laplace for diag BFBT GMG
+    MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
+    mg_coarse_Laplace.initialize(mg_smoother_Laplace);
 
 
     if (print_details)
@@ -1261,10 +1290,18 @@ namespace aspect
       mg_interface_matrices_Schur[level].initialize(mg_matrices_Schur_complement[level]);
     mg::Matrix<VectorType> mg_interface_Schur(mg_interface_matrices_Schur);
 
+    // Laplace for diag BFBT
+
+    MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
+    mg_interface_matrices_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
+    for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
+      mg_interface_matrices_Laplace[level].initialize(mg_matrices_Laplace[level]);
+    mg::Matrix<VectorType> mg_interface_Laplace(mg_interface_matrices_Laplace);
+
     // MG Matrix
     mg::Matrix<VectorType> mg_matrix_A(mg_matrices_A_block);
     mg::Matrix<VectorType> mg_matrix_Schur(mg_matrices_Schur_complement);
-
+    mg::Matrix<VectorType> mg_matrix_Laplace(mg_matrices_Laplace);
     // MG object
     // ABlock GMG
     Multigrid<VectorType> mg_A(mg_matrix_A,
@@ -1282,10 +1319,22 @@ namespace aspect
                                    mg_smoother_Schur);
     mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
 
+    //Diag-BFBT pressure Laplace GMG
+     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
+                                   mg_coarse_Laplace,
+                                   mg_transfer_Schur_complement,
+                                   mg_smoother_Laplace,
+                                   mg_smoother_Laplace);
+    mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
+
     // GMG Preconditioner for ABlock and Schur complement
     using GMGPreconditioner = PreconditionMG<dim, VectorType, MGTransferMF<dim,GMGNumberType>>;
     GMGPreconditioner prec_A(dof_handler_v, mg_A, mg_transfer_A_block);
     GMGPreconditioner prec_Schur(dof_handler_p, mg_Schur, mg_transfer_Schur_complement);
+    GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
+
+
+  
 
 
     // Many parts of the solver depend on the block layout (velocity = 0,
@@ -1479,10 +1528,10 @@ namespace aspect
         const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
 
 
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::DiagonalMatrix<VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      diag_pressure_laplace,
+                                      prec_Laplace,
                                       /*do_solve_schur_complement*/ true,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1493,7 +1542,7 @@ namespace aspect
                                       Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          diag_pressure_laplace,
+                                          prec_Laplace,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
@@ -2107,6 +2156,13 @@ namespace aspect
       Schur_complement_block_matrix.initialize(matrix_free, selected_dof_handler , selected_dof_handler);
     }
 
+    //Laplace block matrix
+    {
+      Laplace_block_matrix.clear();
+      const std::vector<unsigned int> selected_dof_handler={/*pressure=*/1};
+      Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
+    }
+
     // Create GMG matrices and constraints for each multigrid level
     {
       const unsigned int n_levels = this->get_triangulation().n_global_levels();
@@ -2115,6 +2171,8 @@ namespace aspect
       mg_matrices_Schur_complement.resize(0, n_levels-1);
       mg_matrices_A_block.clear_elements();
       mg_matrices_A_block.resize(0, n_levels-1);
+      mg_matrices_Laplace.clear_elements();
+      mg_matrices_Laplace.resize(0,n_levels-1);
 
       for (unsigned int level=0; level<n_levels; ++level)
         {
@@ -2261,6 +2319,14 @@ namespace aspect
                                                            level,
                                                            selected_dof_handler);
           }
+          {
+            mg_matrices_Laplace[level].clear();
+            const std::vector<unsigned int> selected_dof_handler={/*pressure=*/1};
+            mg_matrices_Laplace[level].initialize(matrix_free_level,
+                                                           mg_constrained_dofs_Schur_complement,
+                                                           level,
+                                                           selected_dof_handler);
+          }
         }
     }
 
@@ -2272,11 +2338,13 @@ namespace aspect
     mg_transfer_Schur_complement.clear();
     mg_transfer_Schur_complement.initialize_constraints(mg_constrained_dofs_Schur_complement);
     mg_transfer_Schur_complement.build(dof_handler_p);
+
   }
 
 
 
   template <int dim, int velocity_degree>
+    
   void StokesMatrixFreeHandlerLocalSmoothingImplementation<dim, velocity_degree>::build_preconditioner()
   {
     this->get_computing_timer().enter_subsection("Build Stokes preconditioner");
@@ -2284,6 +2352,7 @@ namespace aspect
     for (unsigned int level=0; level < this->get_triangulation().n_global_levels(); ++level)
       {
         mg_matrices_Schur_complement[level].compute_diagonal();
+        mg_matrices_Laplace[level].compute_diagonal();
         mg_matrices_A_block[level].compute_diagonal();
       }
 

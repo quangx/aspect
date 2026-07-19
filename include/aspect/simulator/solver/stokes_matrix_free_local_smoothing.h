@@ -21,10 +21,13 @@
 #ifndef _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 #define _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 
+#include "matrix_free_operators.h"
+#include "stokes_matrix_free.h"
 #include <aspect/global.h>
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
+#include <deal.II/base/mg_level_object.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -215,18 +218,22 @@ namespace aspect
       using BBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType=MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
+      GMGLaplaceType Laplace_block_matrix;
+
 
       AffineConstraints<double> constraints_v;
       AffineConstraints<double> constraints_p;
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
+      dealii::MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
