@@ -1208,9 +1208,9 @@ namespace aspect
               smoother_data_Schur[0].degree = 8;
               smoother_data_Schur[0].eig_cg_n_iterations = 100;
 
-                smoother_data_Laplace[level].smoothing_range = 15.;
-              smoother_data_Laplace[level].degree = 4;
-              smoother_data_Laplace[level].eig_cg_n_iterations = 10;
+                smoother_data_Laplace[level].smoothing_range = 1e-3;
+              smoother_data_Laplace[level].degree = 8;
+              smoother_data_Laplace[level].eig_cg_n_iterations = 100;
             }
           smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
           smoother_data_Laplace[level].preconditioner=mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
