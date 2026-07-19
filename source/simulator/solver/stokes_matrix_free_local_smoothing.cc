@@ -171,7 +171,7 @@ namespace aspect
             // SolverCG<VectorType> solver(solver_control,mp_mem);
             // dst=0.0;
             // solver.solve(mp_matrix,dst,src_mean_zero,mp_preconditioner);
-            mp_preconditioner.vmult(dst,solve);
+            mp_preconditioner.vmult(dst,src);
             dst.add(-dst.mean_value());
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
