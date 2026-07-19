@@ -204,7 +204,11 @@ namespace aspect
     {
       BC_invBT_Operator<dim,degree_v,StokesMatrixType,BOperatorType,BTOperatorType> Op_BC_invBT(system_matrix,
       B_operator,BT_operator,diag_A_inv,cell_data);
-      bc_invbt_diagonal.reinit(Op_BC_invBT.compute_diagonal());
+      auto temp=OP_BC_invBT.compute_diagonal();
+      for(auto &i:temp){
+        i=1.0/i;
+      }
+      bc_invbt_diagonal.reinit(temp);
 
     }
 
