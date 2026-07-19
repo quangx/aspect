@@ -681,6 +681,12 @@ namespace aspect
   std::pair<double,double>
   Simulator<dim>::solve_stokes (LinearAlgebra::BlockVector &solution_vector)
   {
+    aspect::internal::Nullspace<TrilinosWrappers::MPI::Vector> nullspace;
+    nullspace.basis.emplace_back(introspection.index_sets.stokes_partitioning[1], mpi_communicator);
+    TrilinosWrappers::MPI::Vector &vec=nullspace.basis[0];
+    vec.add(1.0);
+    vec.compress(VectorOperation::add);
+    vec/=vec.l2_norm();
     computing_timer.enter_subsection("Solve Stokes system");
 
     const std::string name = [&]() -> std::string
