@@ -199,7 +199,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
@@ -235,7 +235,7 @@ namespace aspect
 
           solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
