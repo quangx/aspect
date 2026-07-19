@@ -171,7 +171,7 @@ namespace aspect
             // SolverCG<VectorType> solver(solver_control,mp_mem);
             // dst=0.0;
             // solver.solve(mp_matrix,dst,src_mean_zero,mp_preconditioner);
-            mp_preconditioner.vmult(dst,src);
+            // mp_preconditioner.vmult(dst,src);
             dst.add(-dst.mean_value());
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
@@ -200,11 +200,11 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
-          mp_preconditioner.vmult(ptmp,rhs1);
+          // mp_preconditioner.vmult(ptmp,rhs1);
           std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
           std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
 
-          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
@@ -240,8 +240,8 @@ namespace aspect
 
           solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
           dst = 0;
-          mp_preconditioner.vmult(dst,rhs2);
-          // solver.solve(rmv*op_BC_invBT, dst, rhs2, op_mp_preconditioner);
+          // mp_preconditioner.vmult(dst,rhs2);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
@@ -1514,6 +1514,8 @@ namespace aspect
 
     using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
     PressureLaplaceOperatorType pressure_laplace_operator;
+      using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
+
 
     if (this->get_parameters().use_bfbt)
       {
