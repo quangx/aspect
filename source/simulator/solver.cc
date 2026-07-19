@@ -208,6 +208,68 @@ namespace aspect
       return return_op;
     }
 
+     template<class VectorType>
+    struct Nullspace
+    {
+      std::vector<VectorType> basis;
+    };
+
+    template<typename Range,
+             typename Domain,
+             typename Payload,
+             class Op,
+             class VectorType>
+    LinearOperator<Range, Domain, Payload> myoperator(Op &op,
+                                                      LinearOperator<Range,Domain,Payload> &exemplar,
+                                                      Nullspace<VectorType> &nullspace)
+    {
+      LinearOperator<Range, Domain, Payload> return_op;
+
+      return_op.reinit_range_vector  = exemplar.reinit_range_vector;
+      return_op.reinit_domain_vector = exemplar.reinit_domain_vector;
+
+      return_op.vmult = [&](Range &dest, const Domain &src)
+      {
+        // std::cout << "before vmult" << std::endl;
+        op.vmult(dest, src); // dest = Phi(src)
+
+        // std::cout << "projection" << std::endl;
+        //  Projection.
+        for (unsigned int i = 0; i < nullspace.basis.size(); ++i)
+          {
+            double inner_product = nullspace.basis[i] * dest;
+            dest.add(-1.0 * inner_product, nullspace.basis[i]);
+          }
+      };
+      //  std::cout << "ok" << std::endl;
+      return return_op;
+
+    }
+
+
+        template<typename Range,
+             typename Domain,
+             typename Payload>
+    LinearOperator<Range, Domain, Payload> remove_mean_value(const LinearOperator<Range,Domain,Payload> &exemplar)
+    {
+      LinearOperator<Range, Domain, Payload> return_op;
+
+      return_op.reinit_range_vector  = exemplar.reinit_range_vector;
+      return_op.reinit_domain_vector = exemplar.reinit_domain_vector;
+
+      return_op.vmult = [&](Range &dest, const Domain &src)
+      {
+        // std::cout << "before vmult" << std::endl;
+        // op.vmult(dest, src); // dest = Phi(src)
+
+        // std::cout << "projection" << std::endl;
+        //  Projection.
+        dest = src;
+        dest.add(-dest.mean_value());
+      };
+      //  std::cout << "ok" << std::endl;
+      return return_op;
+    }
 
 
     /**
@@ -294,10 +356,17 @@ namespace aspect
             const auto Op_C_inv  = diag_operator(Op_A,inverse_lumped_mass_matrix);
             const auto BC_invBT  = Op_B*Op_C_inv*Op_BT;
 
-            solver.solve(BC_invBT,
+            auto op_preconditioner=linear_operator(BC_invBT,laplace_preconditioner);
+            auto rmv=remove_mean_value<>(BC_invBT);
+
+            TrilinosWrappers::MPI::Vector prhs=src;
+            prhs.add(-prhs.mean_value());
+            solver_control.set_tolerance(1e-6*prhs.l2_norm());
+
+            solver.solve(rmv*BC_invBT,
                          ptmp,
-                         src,
-                         laplace_preconditioner);
+                         prhs,
+                         rmv*op_preconditioner);
             n_iterations_ += solver_control.last_step();
             system_matrix.block(0,1).vmult(utmp,ptmp);
 
@@ -307,11 +376,12 @@ namespace aspect
             system_matrix.block(1,0).vmult(ptmp,wtmp);
 
             dst=0;
+            ptmp.add(-ptmp.mean_value());
             solver_control.set_tolerance(1e-6*ptmp.l2_norm());
-            solver.solve(BC_invBT,
+            solver.solve(rmv*BC_invBT,
                          dst,
                          ptmp,
-                         laplace_preconditioner);
+                         rmv*op_preconditioner);
             n_iterations_ += solver_control.last_step();
           }
         }
