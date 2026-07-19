@@ -201,6 +201,9 @@ namespace aspect
           SolverGMRES<VectorType> solver(solver_control,mem);
           ptmp = 0;
           mp_preconditioner.vmult(ptmp,rhs1);
+          std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
+          std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
+
           // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, op_mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
