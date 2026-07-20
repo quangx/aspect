@@ -198,7 +198,9 @@ namespace aspect
           //DEBUG with identity
           PreconditionIdentity identity;
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-          SolverCG<VectorType> solver(solver_control,mem);
+          IterationNumberControl iteration_control(5);
+
+          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
           ptmp = 0;
           // mp_preconditioner.vmult(ptmp,rhs1);
           std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
@@ -238,7 +240,10 @@ namespace aspect
 
          
 
-          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
+          if(do_solve_schur_complement)
+          {
+            solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
+          }
           dst = 0;
           // mp_preconditioner.vmult(dst,rhs2);
           solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
@@ -1754,7 +1759,7 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
                    SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
