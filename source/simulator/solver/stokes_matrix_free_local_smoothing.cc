@@ -1537,14 +1537,14 @@ namespace aspect
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       prec_Laplace,
-                                      /*do_solve_schur_complement*/ true,
+                                      /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
                                       stokes_matrix,
                                       A_block_matrix,
                                       B_block,
                                       BT_block,
-                                      Schur_complement_block_matrix); //hack - the vmults do not seem to vonverge.
+                                      Schur_complement_block_matrix); 
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_Laplace,
