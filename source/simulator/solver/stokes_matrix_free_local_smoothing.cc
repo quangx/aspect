@@ -198,7 +198,7 @@ namespace aspect
           //DEBUG with identity
           PreconditionIdentity identity;
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-          SolverGMRES<VectorType> solver(solver_control,mem);
+          SolverCG<VectorType> solver(solver_control,mem);
           ptmp = 0;
           // mp_preconditioner.vmult(ptmp,rhs1);
           std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
