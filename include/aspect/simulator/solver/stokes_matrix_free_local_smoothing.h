@@ -233,7 +233,7 @@ namespace aspect
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
-      dealii::MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
