@@ -2,7 +2,7 @@
 
 for averaging in none; do # arithmetic/geometric/harmonic average
   for nsinkers in 4 8 16; do
-    for viscosity in 1e1 1e3 1e5 1e7 ; do
+    for viscosity in 1e1 1e2 1e3 1e4 1e5 ; do
       for refinement in   4 5 6 ; do
         echo "subsection Material model" > current.prm
         echo "  set Material averaging = $averaging" >> current.prm
@@ -31,7 +31,7 @@ for averaging in none; do # arithmetic/geometric/harmonic average
 	echo "end">>current.prm
 
 	current_model="averaging${averaging}_nsinkers${nsinkers}_viscosity${viscosity}_refinement${refinement}"
-        echo "set Output directory = home/quang-hoang/Documents/aspect/benchmarks/nsinker/diag_A_diag_mp/output-${current_model}" >> current.prm
+        echo "set Output directory =/home/qxhoang/aspect/benchmarks/nsinker/diag_A_prec_laplace_gmg_solve/output-${current_model}" >> current.prm
         echo "Starting ${current_model}"
         cat nsinker.prm current.prm | mpirun -np 32 ./aspect-release --
       done
