@@ -1206,31 +1206,35 @@ namespace aspect
                                      this->get_parameters().linear_solver_A_block_tolerance
                                     );
     using SchurApproximationType=internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
+    using BlockSchurPreconditionerType = internal::BlockSchurPreconditioner<
+                                         internal::InverseVelocityBlock<GMGPreconditioner, VectorType, ABlockMatrixType>,
+                                         BTBlockOperatorType,
+                                         dealii::LinearAlgebra::distributed::BlockVector<double>,
+                                         VectorType>;
 
-    internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>
-    schur_approximation_cheap(prec_Schur,
+    std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
+    std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
+
+    schur_approximation_cheap= std::make_unique<SchurApproximationType>(prec_Schur,
                               stokes_matrix,
                               Schur_complement_block_matrix,
                               /*do_solve_Schur*/ false,
                               this->get_parameters().linear_solver_S_block_tolerance);
 
-    internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>
-    schur_approximation_expensive(prec_Schur,
+    schur_approximation_expensive= std::make_unique<SchurApproximationType>(prec_Schur,
                                   stokes_matrix,
                                   Schur_complement_block_matrix,
                                   /*do_solve_Schur*/ true,
                                   this->get_parameters().linear_solver_S_block_tolerance);
-    const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType>,
-          SchurApproximationType,BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
-          preconditioner_cheap (inverse_velocity_block_cheap,
-                                schur_approximation_cheap,
-                                BT_block);
+    const BlockSchurPreconditionerType preconditioner_cheap(
+      inverse_velocity_block_cheap,
+      *schur_approximation_cheap,
+      BT_block);
 
-    const internal::BlockSchurPreconditioner<internal::InverseVelocityBlock<GMGPreconditioner,VectorType,ABlockMatrixType>,
-          SchurApproximationType, BTBlockOperatorType, dealii::LinearAlgebra::distributed::BlockVector<double>>
-          preconditioner_expensive (inverse_velocity_block_expensive,
-                                    schur_approximation_expensive,
-                                    BT_block);
+    const BlockSchurPreconditionerType preconditioner_expensive(
+      inverse_velocity_block_expensive,
+      *schur_approximation_expensive,
+      BT_block);
 
     PrimitiveVectorMemory<dealii::LinearAlgebra::distributed::BlockVector<double>> mem;
 
@@ -1480,7 +1484,7 @@ namespace aspect
         catch (const std::exception &exc)
           {
             this->get_signals().post_stokes_solver(sim,
-                                                   schur_approximation_cheap.n_iterations() + schur_approximation_expensive.n_iterations(),
+                                                   schur_approximation_cheap->n_iterations() + schur_approximation_expensive->n_iterations(),
                                                    inverse_velocity_block_cheap.n_iterations() + inverse_velocity_block_expensive.n_iterations(),
                                                    solver_control_cheap,
                                                    solver_control_expensive);
@@ -1502,7 +1506,7 @@ namespace aspect
 
     //signal successful solver
     this->get_signals().post_stokes_solver(sim,
-                                           schur_approximation_cheap.n_iterations() + schur_approximation_expensive.n_iterations(),
+                                           schur_approximation_cheap->n_iterations() + schur_approximation_expensive->n_iterations(),
                                            inverse_velocity_block_cheap.n_iterations() + inverse_velocity_block_expensive.n_iterations(),
                                            solver_control_cheap,
                                            solver_control_expensive);
@@ -1531,9 +1535,9 @@ namespace aspect
 
     if (print_details)
       {
-        this->get_pcout() << "     Schur complement preconditioner: " << schur_approximation_cheap.n_iterations()
+        this->get_pcout() << "     Schur complement preconditioner: " << schur_approximation_cheap->n_iterations()
                           << '+'
-                          << schur_approximation_expensive.n_iterations()
+                          << schur_approximation_expensive->n_iterations()
                           << " iterations." << std::endl;
         this->get_pcout() << "     A block preconditioner: " << inverse_velocity_block_cheap.n_iterations()
                           << '+'
