@@ -895,25 +895,25 @@ namespace aspect
     const unsigned int cell = pressure.get_current_cell_index();
     const unsigned int n_components_filled = this->get_matrix_free()->n_active_entries_per_cell_batch(cell);
 
-    VectorizedArray<number> prefactor;
+    VectorizedArray<number> prefactor = cell_data->averaged_diagonal_A(cell,0);
 
     // The /= operator for VectorizedArray results in a floating point operation
     // (divide by 0) since the (*viscosity)(cell) array is not completely filled.
     // Therefore, we need to divide each entry manually.
-    if (!use_viscosity_at_quadrature_points)
-      {
-        for (unsigned int c=0; c<n_components_filled; ++c)
-          prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, 0)[c];
-      }
+    // if (!use_viscosity_at_quadrature_points)
+    //   {
+    //     for (unsigned int c=0; c<n_components_filled; ++c)
+    //       prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, 0)[c];
+    //   }
 
-    for (const unsigned int q : pressure.quadrature_point_indices())
-      {
-        // Only update the viscosity if a Q1 projection is used.
-        if (use_viscosity_at_quadrature_points)
-          {
-            for (unsigned int c=0; c<n_components_filled; ++c)
-              prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, q)[c];
-          }
+    // for (const unsigned int q : pressure.quadrature_point_indices())
+    //   {
+    //     // Only update the viscosity if a Q1 projection is used.
+    //     if (use_viscosity_at_quadrature_points)
+    //       {
+    //         for (unsigned int c=0; c<n_components_filled; ++c)
+    //           prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, q)[c];
+    //       }
 
         pressure.submit_gradient(prefactor*pressure.get_gradient(q), q);
       }

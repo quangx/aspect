@@ -136,6 +136,13 @@ namespace aspect
       Table<2, VectorizedArray<number>> viscosity;
 
       /**
+       * Table which stores an averaged diagonal velocity value for each cell.
+       * Used in the prefactor computation for the diag A bfbt inner preconditioner
+       * implementation.
+       */
+      Table<2, VectorizedArray<number>> averaged_diagonal_A;
+
+      /**
        * Table which stores the strain rate for each cell to be used
        * for the Newton terms.
        */
