@@ -1518,6 +1518,8 @@ namespace aspect
       {
         A_block_matrix.compute_diagonal();
         Schur_complement_block_matrix.compute_diagonal();
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
+          A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
 
         // Populate averaged diagonal of A table.
 
@@ -1525,9 +1527,9 @@ namespace aspect
           const unsigned int n_cells=stokes_matrix.get_matrix_free()->n_cell_batches();
           active_cell_data.averaged_diagonal_A.reinit(TableIndices<2>(n_cells, 1));
           for(unsigned int i=0; i<n_cells;++i){
-            dealII::FEEvaluatoin<dim,velocity_degree, velocity_degree+1, dim, double>
+            dealii::FEEvaluation<dim,velocity_degree, velocity_degree+1, dim, double>
             u_eval(*stokes_matrix.get_matrix_free(),0);
-            u_eval.reinit(cell);
+            u_eval.reinit(i);
             u_eval.read_dof_values(diag_A_inv);
 
             dealii::VectorizedArray<double> sum=0.0;
@@ -1535,7 +1537,7 @@ namespace aspect
             for(unsigned int j = 0;j < n_dofs; ++j){
                 sum+=u_eval.begin_dof_values()[j];
             }
-            active_cell_data.averaged_diagonal_A(i,0)=sum/n_dofs;
+            active_cell_data.averaged_diagonal_A(i,0)=sum/static_cast<double>(n_dofs);
 
 
 
@@ -1543,8 +1545,7 @@ namespace aspect
 
         }
 
-        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
-          A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
+        
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
@@ -2381,23 +2382,26 @@ namespace aspect
         mg_matrices_Laplace[level].compute_diagonal();
         mg_matrices_A_block[level].compute_diagonal();
         if(this->get_parameters().use_bfbt){
-          const auto &level_diag_A_inverse_averaged =
+          const auto &level_diag_A_inverse =
           mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
           
           const auto &velocity_matrix_free_level = *mg_matrices_A_block[level].get_matrix_free();
+          level_cell_data[level].averaged_diagonal_A.reinit(
+            TableIndices<2>(velocity_matrix_free_level.n_cell_batches(),1)
+          );
 
           for(unsigned int i = 0; i<velocity_matrix_free_level.n_cell_batches();++i){
-            dealii::FEEvaluatoin<dim, velocity_degree, velocity_degree+1, dim, GMGNumberType>
+            dealii::FEEvaluation<dim, velocity_degree, velocity_degree+1, dim, GMGNumberType>
             u_eval(velocity_matrix_free_level,0);
-            u_eval.reinit(cell);
-            u_eval.read_dof_values(level_diag_A_inverse_averaged);
+            u_eval.reinit(i);
+            u_eval.read_dof_values(level_diag_A_inverse);
 
             dealii::VectorizedArray<GMGNumberType> sum=0.0;
             const unsigned int n_dofs = u_eval.dofs_per_cell;
             for(unsigned int j=0; j< n_dofs; ++j){
               sum+=u_eval.begin_dof_values()[j];
             }
-            level_cell_data[level].diag_A_inv_cell_average(i,0)= sum/n_dofs;
+            level_cell_data[level].averaged_diagonal_A(i,0)= sum/static_cast<GMGNumberType>(n_dofs);
           }
         }
       }

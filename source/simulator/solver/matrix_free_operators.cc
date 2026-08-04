@@ -889,8 +889,8 @@ namespace aspect
                          1,
                          number> &pressure) const
   {
-    const bool use_viscosity_at_quadrature_points
-      = (cell_data->viscosity.size(1) == pressure.n_q_points);
+    // const bool use_viscosity_at_quadrature_points
+    //   = (cell_data->viscosity.size(1) == pressure.n_q_points);
 
     const unsigned int cell = pressure.get_current_cell_index();
     const unsigned int n_components_filled = this->get_matrix_free()->n_active_entries_per_cell_batch(cell);
@@ -906,14 +906,14 @@ namespace aspect
     //       prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, 0)[c];
     //   }
 
-    // for (const unsigned int q : pressure.quadrature_point_indices())
-    //   {
-    //     // Only update the viscosity if a Q1 projection is used.
-    //     if (use_viscosity_at_quadrature_points)
-    //       {
-    //         for (unsigned int c=0; c<n_components_filled; ++c)
-    //           prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, q)[c];
-    //       }
+    for (const unsigned int q : pressure.quadrature_point_indices())
+      {
+        // // Only update the viscosity if a Q1 projection is used.
+        // if (use_viscosity_at_quadrature_points)
+        //   {
+        //     for (unsigned int c=0; c<n_components_filled; ++c)
+        //       prefactor[c] = cell_data->pressure_scaling*cell_data->pressure_scaling / cell_data->viscosity(cell, q)[c];
+        //   }
 
         pressure.submit_gradient(prefactor*pressure.get_gradient(q), q);
       }
