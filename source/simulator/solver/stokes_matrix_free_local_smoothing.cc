@@ -1213,10 +1213,13 @@ namespace aspect
               smoother_data_Laplace[level].eig_cg_n_iterations = 100;
             }
           smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
-          smoother_data_Laplace[level].preconditioner=mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
+          if(this->get_parameters().use_bfbt)
+            smoother_data_Laplace[level].preconditioner=mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
         }
       mg_smoother_Schur.initialize(mg_matrices_Schur_complement, smoother_data_Schur);
-      mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
+      if(this->get_parameters().use_bfbt){
+       mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
+      }
     }
 
     // Estimate the eigenvalues for the Chebyshev smoothers.
@@ -1232,11 +1235,16 @@ namespace aspect
         VectorType temp_pressure;
         mg_matrices_A_block[level].initialize_dof_vector(temp_velocity);
         mg_matrices_Schur_complement[level].initialize_dof_vector(temp_pressure);
-        mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
 
         mg_smoother_A[level].estimate_eigenvalues(temp_velocity);
         mg_smoother_Schur[level].estimate_eigenvalues(temp_pressure);
-        mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
+
+        if(this->get_parameters().use_bfbt){
+                  mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
+
+                    mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
+
+        }
 
         if (level==0)
           {
@@ -1509,15 +1517,16 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
-    using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
-    PressureLaplaceOperatorType pressure_laplace_operator;
+    // using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
+    // PressureLaplaceOperatorType pressure_laplace_operator;
       using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
+
+      Schur_complement_block_matrix.compute_diagonal();
+      A_block_matrix.compute_diagonal();
 
 
     if (this->get_parameters().use_bfbt)
       {
-        A_block_matrix.compute_diagonal();
-        Schur_complement_block_matrix.compute_diagonal();
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
 
@@ -1548,11 +1557,11 @@ namespace aspect
         
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
-        const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
-        pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
-        pressure_laplace_operator.set_cell_data(active_cell_data);
-        pressure_laplace_operator.compute_diagonal();
-        const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
+        // const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
+        // pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
+        // pressure_laplace_operator.set_cell_data(active_cell_data);
+        // pressure_laplace_operator.compute_diagonal();
+        // const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
 
 
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
@@ -2379,7 +2388,6 @@ namespace aspect
     for (unsigned int level=0; level < this->get_triangulation().n_global_levels(); ++level)
       {
         mg_matrices_Schur_complement[level].compute_diagonal();
-        mg_matrices_Laplace[level].compute_diagonal();
         mg_matrices_A_block[level].compute_diagonal();
         if(this->get_parameters().use_bfbt){
           const auto &level_diag_A_inverse =
@@ -2403,7 +2411,10 @@ namespace aspect
             }
             level_cell_data[level].averaged_diagonal_A(i,0)= sum/static_cast<GMGNumberType>(n_dofs);
           }
+          mg_matrices_Laplace[level].compute_diagonal();
+
         }
+
       }
     
 

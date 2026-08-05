@@ -895,7 +895,7 @@ namespace aspect
     const unsigned int cell = pressure.get_current_cell_index();
     const unsigned int n_components_filled = this->get_matrix_free()->n_active_entries_per_cell_batch(cell);
 
-    VectorizedArray<number> prefactor = cell_data->averaged_diagonal_A(cell,0);
+    VectorizedArray<number> prefactor = cell_data->pressure_scaling*cell_data->pressure_scaling*cell_data->averaged_diagonal_A(cell,0);
 
     // The /= operator for VectorizedArray results in a floating point operation
     // (divide by 0) since the (*viscosity)(cell) array is not completely filled.
