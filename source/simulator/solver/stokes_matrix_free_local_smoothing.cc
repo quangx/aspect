@@ -138,6 +138,23 @@ namespace aspect
           BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
           Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
+
+          //try two  v cycles to reduce iteration counts
+
+          // dealii::LinearOperator<VectorType> op_pressure_laplace_v_cycles;
+          
+          // op_pressure_laplace_v_cycles.reinit_range_vector=[&](VectorType &v, bool){
+          //   v.reinit(src);
+          // };
+          // op_pressure_laplace_v_cycles.reinit_domain_vector=[&](VectorType &v, bool){
+          //   v.reinit(src);
+          // };
+          // op_pressure_laplace_v_cycles.vmult=[&](VectorType &dst, const VectorType &src){
+          //   VectorType tmp;
+          //   tmp.reinit(src);
+          //   mp_preconditioner.vmult(tmp,src);
+          //   mp_preconditioner.vmult(dst,tmp);
+          // };
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
           {
             v.reinit(src);
@@ -1199,8 +1216,8 @@ namespace aspect
               smoother_data_Schur[level].eig_cg_n_iterations = 10;
 
                 smoother_data_Laplace[level].smoothing_range = 15.;
-              smoother_data_Laplace[level].degree = 4;
-              smoother_data_Laplace[level].eig_cg_n_iterations = 10;
+              smoother_data_Laplace[level].degree = 6;
+              smoother_data_Laplace[level].eig_cg_n_iterations = 30;
             }
           else
             {
