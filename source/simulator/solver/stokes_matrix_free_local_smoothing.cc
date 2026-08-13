@@ -209,7 +209,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           IterationNumberControl iteration_control(5);
 
-          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:solver_control), mem);
+          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
           ptmp = 0;
           // mp_preconditioner.vmult(ptmp,rhs1);
           // std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
@@ -1216,8 +1216,8 @@ namespace aspect
               smoother_data_Schur[level].eig_cg_n_iterations = 10;
 
                 smoother_data_Laplace[level].smoothing_range = 15.;
-              smoother_data_Laplace[level].degree = 6;
-              smoother_data_Laplace[level].eig_cg_n_iterations = 30;
+              smoother_data_Laplace[level].degree = 4;
+              smoother_data_Laplace[level].eig_cg_n_iterations = 10;
             }
           else
             {
@@ -1768,9 +1768,9 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
                                   /*,true*/));
 
