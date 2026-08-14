@@ -270,8 +270,13 @@ namespace aspect
                 // For DGQ0, we simply use the viscosity at the single
                 // support point of the element. For DGQ1, we must project
                 // back to quadrature point values.
-                if (dof_handler_projection.get_fe().degree == 0)
+                if (dof_handler_projection.get_fe().degree == 0){
                   level_cell_data[level].viscosity(cell, 0)[i] = level_viscosity_vector[level](local_dof_indices[0]);
+                  const GMGNumberType val=level_viscosity_vector[level](local_dof_indices[0]);
+                  if(val<=0 || val<minimum_viscosity || val>maximum_viscosity){
+                    std::cout<<"bad viscosity value of "<<val;
+                  }
+                }
                 else
                   {
                     fe_values_projection.reinit(DG_cell);
