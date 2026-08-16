@@ -209,7 +209,7 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           IterationNumberControl iteration_control(5);
 
-          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
+          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:solver_control), mem);
           ptmp = 0;
           // mp_preconditioner.vmult(ptmp,rhs1);
           // std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
@@ -1526,7 +1526,7 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
-    using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
+    using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,double>;
     PressureLaplaceOperatorType pressure_laplace_operator;
       using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
 
@@ -1535,10 +1535,24 @@ namespace aspect
       {
         A_block_matrix.compute_diagonal();
         Schur_complement_block_matrix.compute_diagonal();
+        Laplace_block_matrix.compute_diagonal();
+
+
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
+
+        //Chebyshev pressure laplace instead of v-cycle
+
+        typename dealii::PreconditionChebyshev<PressureLaplaceOperatorType,VectorType>::AdditionalData chebyshev_data;
+        chebyshev_data.smoothing_range = 15.;
+             chebyshev_data.degree = 4;
+              chebyshev_data.eig_cg_n_iterations = 10;
+        chebyshev_data.preconditioner=Laplace_block_matrix.get_matrix_diagonal_inverse();
+
+        dealii::PreconditionChebyshev<PressureLaplaceOperatorType, VectorType> chebyshev_pressure_laplace;
+        chebyshev_pressure_laplace.initialize(Laplace_block_matrix, chebyshev_data);
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
         pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
@@ -1547,10 +1561,10 @@ namespace aspect
         const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
 
 
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, dealii::PreconditionChebyshev<PressureLaplaceOperatorType, VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      prec_Laplace,
+                                      chebyshev_pressure_laplace,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1561,7 +1575,7 @@ namespace aspect
                                       Schur_complement_block_matrix); 
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          prec_Laplace,
+                                          chebyshev_pressure_laplace,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
