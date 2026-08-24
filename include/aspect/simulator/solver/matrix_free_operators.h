@@ -651,28 +651,29 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+    template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+    class DiagonalBC_invBTOperator: public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+        DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
+                                 const BOperatorType &B_operator,
+                                 const BTOperatorType &BT_operator,
+                                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                                 const OperatorCellData<dim, number> &cell_data);
+        void compute_diagonal() override;
+
+      private:
+        void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                       const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+        internal::BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType> BC_invBTOperator;
+        const BOperatorType &B_operator;
+        const BTOperatorType &BT_operator;
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+        const OperatorCellData<dim,number> &cell_data;
+    };
   }
 
-  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
-  class DiagonalBC_invBTOperator: public MatrixFreeStokesOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
-  {
-    public:
-     DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
-                                     const BOperatorType &B_operator,
-                                    const BTOperatorType &BT_operator,
-                                    const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-                                    const OperatorCellData<dim, number> &cell_data);
-     void compute_diagonal() override;
 
-     private:
-     void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
-    const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
-    internal::BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType> BC_invBTOperator;
-    const BOperatorType &B_operator;
-    const BTOperatorType &BT_operator;
-    const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
-    const OperatorCellData<dim,number> &cell_data;
-  };
 
 }
 

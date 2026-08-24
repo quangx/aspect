@@ -142,7 +142,7 @@ namespace aspect
           //try two  v cycles to reduce iteration counts
 
           // dealii::LinearOperator<VectorType> op_pressure_laplace_v_cycles;
-          
+
           // op_pressure_laplace_v_cycles.reinit_range_vector=[&](VectorType &v, bool){
           //   v.reinit(src);
           // };
@@ -203,9 +203,9 @@ namespace aspect
 
           VectorType rhs1=src; //nullspace removal
           rhs1.add(-rhs1.mean_value());
-          
 
-          
+
+
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           IterationNumberControl iteration_control(5);
 
@@ -247,12 +247,12 @@ namespace aspect
           VectorType rhs2=ptmp2;
           rhs2.add(-rhs2.mean_value());
 
-         
 
-          if(do_solve_schur_complement)
-          {
-            solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
-          }
+
+          if (do_solve_schur_complement)
+            {
+              solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
+            }
           dst = 0;
           // mp_preconditioner.vmult(dst,rhs2);
           solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
@@ -261,7 +261,7 @@ namespace aspect
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
-          
+
         }
 
       catch (const std::exception &exc)
@@ -602,7 +602,7 @@ namespace aspect
     A_block_matrix.set_cell_data(active_cell_data);
     Schur_complement_block_matrix.set_cell_data(active_cell_data);
     Laplace_block_matrix.set_cell_data(active_cell_data);
-    
+
 
 
     const unsigned int n_levels = this->get_triangulation().n_global_levels();
@@ -1215,7 +1215,7 @@ namespace aspect
               smoother_data_Schur[level].degree = 4;
               smoother_data_Schur[level].eig_cg_n_iterations = 10;
 
-                smoother_data_Laplace[level].smoothing_range = 15.;
+              smoother_data_Laplace[level].smoothing_range = 15.;
               smoother_data_Laplace[level].degree = 4;
               smoother_data_Laplace[level].eig_cg_n_iterations = 10;
             }
@@ -1225,7 +1225,7 @@ namespace aspect
               smoother_data_Schur[0].degree = 8;
               smoother_data_Schur[0].eig_cg_n_iterations = 100;
 
-                smoother_data_Laplace[level].smoothing_range = 1e-3;
+              smoother_data_Laplace[level].smoothing_range = 1e-3;
               smoother_data_Laplace[level].degree = 8;
               smoother_data_Laplace[level].eig_cg_n_iterations = 100;
             }
@@ -1337,11 +1337,11 @@ namespace aspect
     mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
 
     //Diag-BFBT pressure Laplace GMG
-     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
-                                   mg_coarse_Laplace,
-                                   mg_transfer_Schur_complement,
-                                   mg_smoother_Laplace,
-                                   mg_smoother_Laplace);
+    Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
+                                     mg_coarse_Laplace,
+                                     mg_transfer_Schur_complement,
+                                     mg_smoother_Laplace,
+                                     mg_smoother_Laplace);
     mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
 
     // GMG Preconditioner for ABlock and Schur complement
@@ -1351,7 +1351,7 @@ namespace aspect
     GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
 
 
-  
+
 
 
     // Many parts of the solver depend on the block layout (velocity = 0,
@@ -1528,7 +1528,7 @@ namespace aspect
 
     using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
     PressureLaplaceOperatorType pressure_laplace_operator;
-      using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
+    using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
 
 
     if (this->get_parameters().use_bfbt)
@@ -1558,7 +1558,7 @@ namespace aspect
                                       A_block_matrix,
                                       B_block,
                                       BT_block,
-                                      Schur_complement_block_matrix); 
+                                      Schur_complement_block_matrix);
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_Laplace,
@@ -2178,7 +2178,7 @@ namespace aspect
     //Laplace block matrix
     {
       Laplace_block_matrix.clear();
-      const std::vector<unsigned int> selected_dof_handler={/*pressure=*/1};
+      const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
       Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
     }
 
@@ -2340,11 +2340,11 @@ namespace aspect
           }
           {
             mg_matrices_Laplace[level].clear();
-            const std::vector<unsigned int> selected_dof_handler={/*pressure=*/1};
+            const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
             mg_matrices_Laplace[level].initialize(matrix_free_level,
-                                                           mg_constrained_dofs_Schur_complement,
-                                                           level,
-                                                           selected_dof_handler);
+                                                  mg_constrained_dofs_Schur_complement,
+                                                  level,
+                                                  selected_dof_handler);
           }
         }
     }
@@ -2363,7 +2363,7 @@ namespace aspect
 
 
   template <int dim, int velocity_degree>
-    
+
   void StokesMatrixFreeHandlerLocalSmoothingImplementation<dim, velocity_degree>::build_preconditioner()
   {
     this->get_computing_timer().enter_subsection("Build Stokes preconditioner");

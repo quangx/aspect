@@ -1216,16 +1216,16 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
     schur_approximation_cheap= std::make_unique<SchurApproximationType>(prec_Schur,
-                              stokes_matrix,
-                              Schur_complement_block_matrix,
-                              /*do_solve_Schur*/ false,
-                              this->get_parameters().linear_solver_S_block_tolerance);
+                                                                        stokes_matrix,
+                                                                        Schur_complement_block_matrix,
+                                                                        /*do_solve_Schur*/ false,
+                                                                        this->get_parameters().linear_solver_S_block_tolerance);
 
     schur_approximation_expensive= std::make_unique<SchurApproximationType>(prec_Schur,
-                                  stokes_matrix,
-                                  Schur_complement_block_matrix,
-                                  /*do_solve_Schur*/ true,
-                                  this->get_parameters().linear_solver_S_block_tolerance);
+                                                                            stokes_matrix,
+                                                                            Schur_complement_block_matrix,
+                                                                            /*do_solve_Schur*/ true,
+                                                                            this->get_parameters().linear_solver_S_block_tolerance);
     const BlockSchurPreconditionerType preconditioner_cheap(
       inverse_velocity_block_cheap,
       *schur_approximation_cheap,
