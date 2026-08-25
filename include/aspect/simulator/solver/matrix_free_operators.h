@@ -660,7 +660,7 @@ namespace aspect
                                  const BTOperatorType &BT_operator,
                                  const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
                                  const OperatorCellData<dim, number> &cell_data);
-        void compute_diagonal() override;
+        dealii::LinearAlgebra::distributed::Vector<number> compute_diagonal() override;
 
       private:
         void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,

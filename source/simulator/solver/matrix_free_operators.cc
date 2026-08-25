@@ -34,6 +34,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 #include <deal.II/numerics/vector_tools.h>
@@ -1208,7 +1209,7 @@ namespace aspect
 
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
 
-  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
+  dealii::LinearAlgebra::distributed::Vector<number> MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
   ::compute_diagonal(){
     const auto &B_matrix_free=*B_operator.get_matrix_free();
     dealii::LinearAlgebra::distributed::Vector<number> diagonal;
@@ -1222,14 +1223,14 @@ namespace aspect
       p_eval.reinit(cell);
       
       u_eval.read_dof_values(diag_A_inv);
-      const unsinged int n_v_dofs=u_eval.dofs_per_cell;
+      const unsigned int n_v_dofs=u_eval.dofs_per_cell;
 
       std::vector<dealii::VectorizedArray<number>> local_diag_A_inv(n_v_dofs);
 
-      for(unsigned int j=0;j<n_v_dofs){
+      for(unsigned int j=0;j<n_v_dofs; ++j){
         local_diag_A_inv[j]=u_eval.begin_dof_values()[j];
       }
-      for(unsigned int i=0lu<n_p_dofs_per_cell;++i){
+      for(unsigned int i=0;i<n_p_dofs_per_cell;++i){
         p_eval.begin_dof_values()[i]=dealii::make_vectorized_array(0.0);
       }
       for(unsigned int i=0;i<n_p_dofs_per_cell;++i){
@@ -1238,10 +1239,10 @@ namespace aspect
             p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(1.0);
           }
           else{
-            p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);)
+            p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
           }
         }
-      }
+      
       
       p_eval.evaluate(dealii::EvaluationFlags::values);
 
@@ -1272,15 +1273,17 @@ namespace aspect
       p_eval.integrate(dealii::EvaluationFlags::values);
       const dealii::VectorizedArray<double> diag_i=p_eval.begin_dof_values()[i];
 
+      //zero out off diagonals 
       for(unsigned int j=0;j<n_p_dofs_per_cell;++j){
         if(i==j){
           p_eval.begin_dof_values()[j]=diag_i;
         }
         else{
-          p_eval.begin_dof_vallues()[j]=dealii.make_vectorized_array(0.0);
+          p_eval.begin_dof_vallues()[j]=dealii::make_vectorized_array(0.0);
         }
       }
       p_eval.distribute_local_to_global(diagonal);
+    }
 
 
 
@@ -1296,7 +1299,7 @@ namespace aspect
 
 }
 
-// explicit instantiations
+// explicit instantiationsdealii.mak
 namespace aspect
 {
 #define INSTANTIATE(dim) \
