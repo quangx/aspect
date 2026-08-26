@@ -215,7 +215,9 @@ namespace aspect
           // std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
           // std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
 
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
+          mp_preconditioner.vmult(ptmp,rhs1);
+
+          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
@@ -254,8 +256,8 @@ namespace aspect
               solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
             }
           dst = 0;
-          // mp_preconditioner.vmult(dst,rhs2);
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
+           mp_preconditioner.vmult(dst,rhs2);
+          // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
@@ -1565,10 +1567,10 @@ namespace aspect
         chebyshev_bc_invbt.initialize(bc_invbt,chebyshev_data);
 
 
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      prec_Laplace,
+                                      chebyshev_bc_invbt,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1579,7 +1581,7 @@ namespace aspect
                                       Schur_complement_block_matrix);
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          prec_Laplace,
+                                          chebyshev_bc_invbt,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
