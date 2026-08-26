@@ -1207,6 +1207,22 @@ namespace aspect
       }
   }
 
+  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+  MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>
+  ::DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
+                                 const BOperatorType &B_operator,
+                                 const BTOperatorType &BT_operator,
+                                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                                 const OperatorCellData<dim, number> &cell_data):
+                                 BC_invBTOperator(system_matrix,B_operator,BT_operator,diag_A_inv),
+                                 B_operator(B_operator),
+                                 BT_operator(BT_operator),
+                                 diag_A_inv(diag_A_inv),
+                                cell_data(cell_data)
+                                {}
+                          
+
+
   //wraps the action of BC^{-1}B^T
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
@@ -1300,7 +1316,7 @@ namespace aspect
           p_eval.begin_dof_values()[j]=diag_i;
         }
         else{
-          p_eval.begin_dof_vallues()[j]=dealii::make_vectorized_array(0.0);
+          p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
         }
       }
       p_eval.distribute_local_to_global(diagonal);
@@ -1345,6 +1361,14 @@ namespace aspect
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType>; \
+    template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,2, \
+    MatrixFreeStokesOperators::StokesOperator<dim,2,GMGNumberType>, \
+    MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
+    MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>, GMGNumberType>; \
+  template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,3, \
+    MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>, \
+    MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
+    MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>, GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
 
   ASPECT_INSTANTIATE(INSTANTIATE)

@@ -1535,6 +1535,8 @@ namespace aspect
       {
         A_block_matrix.compute_diagonal();
         Schur_complement_block_matrix.compute_diagonal();
+        
+
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
@@ -1545,6 +1547,22 @@ namespace aspect
         pressure_laplace_operator.set_cell_data(active_cell_data);
         pressure_laplace_operator.compute_diagonal();
         const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
+
+        MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>
+        bc_invbt(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);
+        bc_invbt.compute_diagonal();
+
+        typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
+
+        chebyshev_data.smoothing_range=15.;
+        chebyshev_data.degree=4;
+        chebyshev_data.eig_cg_n_iterations=10;
+        chebyshev_data.preconditioner=bc_invbt.get_matrix_diagonal_inverse();
+
+        typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>
+        chebyshev_bc_invbt;
+
+        chebyshev_bc_invbt.initialize(bc_invbt,chebyshev_data);
 
 
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
