@@ -1253,6 +1253,7 @@ namespace aspect
     B_matrix_free.initialize_dof_vector(diagonal,1);
     diagonal=0.0;
     const unsigned int n_p_dofs_per_cell=B_matrix_free.get_dof_handler(1).get_fe().n_dofs_per_cell();
+    diag_A_inv.update_ghost_values();
     for(unsigned int cell = 0; cell<B_matrix_free.n_cell_batches(); ++cell){
       dealii::FEEvaluation<dim, degree_v, degree_v+1, dim, number> u_eval(B_matrix_free,0);
       dealii::FEEvaluation<dim, degree_v-1, degree_v+1, 1, number> p_eval(B_matrix_free,1);
@@ -1330,7 +1331,7 @@ namespace aspect
     }
     diagonal.compress(dealii::VectorOperation::add);
 
-    
+    this->initialize(B_operator.get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
     this->set_constrained_entries_to_one(diagonal);
     for (auto &local_element : inverse_diagonal)
       {
