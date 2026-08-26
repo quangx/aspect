@@ -1207,12 +1207,33 @@ namespace aspect
       }
   }
 
+  //wraps the action of BC^{-1}B^T
+  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                       const dealii::LinearAlgebra::distributed::Vector<number> &src) const{
+                        dealii::LinearAlgebra::distributed::Vector<number> tmp;
+                        tmp.reinit(dst);
+                        BC_invBTOperator.vmult(tmp, src);
+                        dst+=tmp;
+
+
+                        
+  }
+
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
 
-  dealii::LinearAlgebra::distributed::Vector<number> MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
+  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
   ::compute_diagonal(){
     const auto &B_matrix_free=*B_operator.get_matrix_free();
-    dealii::LinearAlgebra::distributed::Vector<number> diagonal;
+    this->inverse_diagonal_entries =
+      std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
+    this->diagonal_entries =
+      std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
+
+    dealii::LinearAlgebra::distributed::Vector<number> &inverse_diagonal =
+      this->inverse_diagonal_entries->get_vector();
+    dealii::LinearAlgebra::distributed::Vector<number> &diagonal =
+      this->diagonal_entries->get_vector();
     B_matrix_free.initialize_dof_vector(diagonal,1);
     diagonal=0.0;
     const unsigned int n_p_dofs_per_cell=B_matrix_free.get_dof_handler(1).get_fe().n_dofs_per_cell();
@@ -1292,7 +1313,16 @@ namespace aspect
 
     }
     diagonal.compress(dealii::VectorOperation::add);
-    return diagonal;
+
+    
+    this->set_constrained_entries_to_one(diagonal);
+    for (auto &local_element : inverse_diagonal)
+      {
+        Assert(local_element > 0.,
+               ExcMessage("No diagonal entry in a positive definite operator "
+                          "should be zero or negative."));
+        local_element = 1./local_element;
+      }
 
   }
 
