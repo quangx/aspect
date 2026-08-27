@@ -1528,8 +1528,7 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
-    using PressureLaplaceOperatorType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>;
-    PressureLaplaceOperatorType pressure_laplace_operator;
+    
     using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
 
 
@@ -1545,10 +1544,7 @@ namespace aspect
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
-        pressure_laplace_operator.initialize(stokes_matrix.get_matrix_free(), selected_dof_handler , selected_dof_handler);
-        pressure_laplace_operator.set_cell_data(active_cell_data);
-        pressure_laplace_operator.compute_diagonal();
-        const dealii::DiagonalMatrix<VectorType> &diag_pressure_laplace=*pressure_laplace_operator.get_matrix_diagonal_inverse();
+        
 
         //MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>
         bc_invbt=std::make_unique<DiagonalBCinvBTType>(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);

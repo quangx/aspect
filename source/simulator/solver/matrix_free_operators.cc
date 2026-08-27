@@ -1241,6 +1241,8 @@ namespace aspect
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
   ::compute_diagonal(){
     const auto &B_matrix_free=*B_operator.get_matrix_free();
+    this->initialize(B_operator.get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
+
     this->inverse_diagonal_entries =
       std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
     this->diagonal_entries =
@@ -1331,7 +1333,6 @@ namespace aspect
     }
     diagonal.compress(dealii::VectorOperation::add);
 
-    this->initialize(B_operator.get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
     this->set_constrained_entries_to_one(diagonal);
     for (auto &local_element : inverse_diagonal)
       {
