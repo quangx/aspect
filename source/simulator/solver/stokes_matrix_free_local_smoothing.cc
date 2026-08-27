@@ -256,7 +256,7 @@ namespace aspect
               solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
             }
           dst = 0;
-           mp_preconditioner.vmult(dst,rhs2);
+          mp_preconditioner.vmult(dst,rhs2);
           // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
@@ -1528,7 +1528,7 @@ namespace aspect
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_cheap;
     std::unique_ptr<internal::SchurComplementOperator<VectorType>> schur_approximation_expensive;
 
-    
+
     using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
 
 
@@ -1536,7 +1536,7 @@ namespace aspect
       {
         A_block_matrix.compute_diagonal();
         Schur_complement_block_matrix.compute_diagonal();
-        
+
 
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
@@ -1544,7 +1544,7 @@ namespace aspect
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
-        
+
 
         //MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>
         bc_invbt=std::make_unique<DiagonalBCinvBTType>(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);

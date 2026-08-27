@@ -1210,36 +1210,38 @@ namespace aspect
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
   MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>
   ::DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
-                                 const BOperatorType &B_operator,
-                                 const BTOperatorType &BT_operator,
-                                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-                                 const OperatorCellData<dim, number> &cell_data):
-                                 BC_invBTOperator(system_matrix,B_operator,BT_operator,diag_A_inv),
-                                 B_operator(B_operator),
-                                 BT_operator(BT_operator),
-                                 diag_A_inv(diag_A_inv),
-                                cell_data(cell_data)
-                                {}
-                          
+                             const BOperatorType &B_operator,
+                             const BTOperatorType &BT_operator,
+                             const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                             const OperatorCellData<dim, number> &cell_data):
+    BC_invBTOperator(system_matrix,B_operator,BT_operator,diag_A_inv),
+    B_operator(B_operator),
+    BT_operator(BT_operator),
+    diag_A_inv(diag_A_inv),
+    cell_data(cell_data)
+  {}
+
 
 
   //wraps the action of BC^{-1}B^T
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
-                       const dealii::LinearAlgebra::distributed::Vector<number> &src) const{
-                        dealii::LinearAlgebra::distributed::Vector<number> tmp;
-                        tmp.reinit(dst);
-                        BC_invBTOperator.vmult(tmp, src);
-                        dst+=tmp;
+      const dealii::LinearAlgebra::distributed::Vector<number> &src) const
+  {
+    dealii::LinearAlgebra::distributed::Vector<number> tmp;
+    tmp.reinit(dst);
+    BC_invBTOperator.vmult(tmp, src);
+    dst+=tmp;
 
 
-                        
+
   }
 
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
 
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
-  ::compute_diagonal(){
+  ::compute_diagonal()
+  {
     const auto &B_matrix_free=*B_operator.get_matrix_free();
     this->initialize(B_operator.get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
 
@@ -1256,84 +1258,97 @@ namespace aspect
     diagonal=0.0;
     const unsigned int n_p_dofs_per_cell=B_matrix_free.get_dof_handler(1).get_fe().n_dofs_per_cell();
     diag_A_inv.update_ghost_values();
-    for(unsigned int cell = 0; cell<B_matrix_free.n_cell_batches(); ++cell){
-      dealii::FEEvaluation<dim, degree_v, degree_v+1, dim, number> u_eval(B_matrix_free,0);
-      dealii::FEEvaluation<dim, degree_v-1, degree_v+1, 1, number> p_eval(B_matrix_free,1);
-      u_eval.reinit(cell);
-      p_eval.reinit(cell);
-      
-      u_eval.read_dof_values(diag_A_inv);
-      const unsigned int n_v_dofs=u_eval.dofs_per_cell;
+    for (unsigned int cell = 0; cell<B_matrix_free.n_cell_batches(); ++cell)
+      {
+        dealii::FEEvaluation<dim, degree_v, degree_v+1, dim, number> u_eval(B_matrix_free,0);
+        dealii::FEEvaluation<dim, degree_v-1, degree_v+1, 1, number> p_eval(B_matrix_free,1);
+        u_eval.reinit(cell);
+        p_eval.reinit(cell);
 
-      std::vector<dealii::VectorizedArray<number>> local_diag_A_inv(n_v_dofs);
+        u_eval.read_dof_values(diag_A_inv);
+        const unsigned int n_v_dofs=u_eval.dofs_per_cell;
 
-      for(unsigned int j=0;j<n_v_dofs; ++j){
-        local_diag_A_inv[j]=u_eval.begin_dof_values()[j];
-      }
-      for(unsigned int i=0;i<n_p_dofs_per_cell;++i){
-        p_eval.begin_dof_values()[i]=dealii::make_vectorized_array(0.0);
-      }
-      for(unsigned int i=0;i<n_p_dofs_per_cell;++i){
-        for(unsigned int j=0;j<n_p_dofs_per_cell;++j){
-          if(i==j){
-            p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(1.0);
+        std::vector<dealii::VectorizedArray<number>> local_diag_A_inv(n_v_dofs);
+
+        for (unsigned int j=0; j<n_v_dofs; ++j)
+          {
+            local_diag_A_inv[j]=u_eval.begin_dof_values()[j];
           }
-          else{
-            p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
+        for (unsigned int i=0; i<n_p_dofs_per_cell; ++i)
+          {
+            p_eval.begin_dof_values()[i]=dealii::make_vectorized_array(0.0);
           }
-        }
-      
-      
-      p_eval.evaluate(dealii::EvaluationFlags::values);
+        for (unsigned int i=0; i<n_p_dofs_per_cell; ++i)
+          {
+            for (unsigned int j=0; j<n_p_dofs_per_cell; ++j)
+              {
+                if (i==j)
+                  {
+                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(1.0);
+                  }
+                else
+                  {
+                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
+                  }
+              }
 
-      //apply B^T operator to unit vector.
 
-      for(unsigned int q: u_eval.quadrature_point_indices()){
-        const dealii::VectorizedArray<number> val_p=p_eval.get_value(q);
-        dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<number>> velocity_terms;
-        for(unsigned int d=0;d<dim; ++d){
-          velocity_terms[d][d]-=cell_data.pressure_scaling*val_p;
-        }
-        u_eval.submit_symmetric_gradient(velocity_terms,q);
+            p_eval.evaluate(dealii::EvaluationFlags::values);
+
+            //apply B^T operator to unit vector.
+
+            for (unsigned int q: u_eval.quadrature_point_indices())
+              {
+                const dealii::VectorizedArray<number> val_p=p_eval.get_value(q);
+                dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<number>> velocity_terms;
+                for (unsigned int d=0; d<dim; ++d)
+                  {
+                    velocity_terms[d][d]-=cell_data.pressure_scaling*val_p;
+                  }
+                u_eval.submit_symmetric_gradient(velocity_terms,q);
+              }
+
+            u_eval.integrate(dealii::EvaluationFlags::gradients);
+
+            //scale by diag(A)^{-1}
+            for (unsigned int j=0; j<n_v_dofs; ++j)
+              {
+                u_eval.begin_dof_values()[j]*=local_diag_A_inv[j];
+              }
+
+            u_eval.evaluate(dealii::EvaluationFlags::gradients);
+            for (const unsigned int q: p_eval.quadrature_point_indices())
+              {
+                const auto sym_grad=u_eval.get_symmetric_gradient(q);
+                p_eval.submit_value(-cell_data.pressure_scaling*dealii::trace(sym_grad),q);
+
+              }
+            p_eval.integrate(dealii::EvaluationFlags::values);
+            const dealii::VectorizedArray<double> diag_i=p_eval.begin_dof_values()[i];
+
+            //zero out off diagonals
+            for (unsigned int j=0; j<n_p_dofs_per_cell; ++j)
+              {
+                if (i==j)
+                  {
+                    p_eval.begin_dof_values()[j]=diag_i;
+                  }
+                else
+                  {
+                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
+                  }
+              }
+            p_eval.distribute_local_to_global(diagonal);
+          }
       }
 
-      u_eval.integrate(dealii::EvaluationFlags::gradients);
-
-      //scale by diag(A)^{-1}
-      for(unsigned int j=0;j<n_v_dofs;++j){
-        u_eval.begin_dof_values()[j]*=local_diag_A_inv[j];
-      }
-
-      u_eval.evaluate(dealii::EvaluationFlags::gradients);
-      for(const unsigned int q: p_eval.quadrature_point_indices()){
-        const auto sym_grad=u_eval.get_symmetric_gradient(q);
-        p_eval.submit_value(-cell_data.pressure_scaling*dealii::trace(sym_grad),q);
-
-      }
-      p_eval.integrate(dealii::EvaluationFlags::values);
-      const dealii::VectorizedArray<double> diag_i=p_eval.begin_dof_values()[i];
-
-      //zero out off diagonals 
-      for(unsigned int j=0;j<n_p_dofs_per_cell;++j){
-        if(i==j){
-          p_eval.begin_dof_values()[j]=diag_i;
-        }
-        else{
-          p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
-        }
-      }
-      p_eval.distribute_local_to_global(diagonal);
-    }
 
 
 
-
-
-
-    }
     diagonal.compress(dealii::VectorOperation::add);
 
     this->set_constrained_entries_to_one(diagonal);
+    inverse_diagonal=diagonal;
     for (auto &local_element : inverse_diagonal)
       {
         Assert(local_element > 0.,
@@ -1342,14 +1357,13 @@ namespace aspect
         local_element = 1./local_element;
       }
 
+
   }
-
-
 }
 
 // explicit instantiationsdealii.mak
-namespace aspect
-{
+  namespace aspect
+  {
 #define INSTANTIATE(dim) \
   template class MatrixFreeStokesOperators::ABlockOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::ABlockOperator<dim,3,GMGNumberType>; \
@@ -1363,18 +1377,18 @@ namespace aspect
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType>; \
-    template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,2, \
-    MatrixFreeStokesOperators::StokesOperator<dim,2,GMGNumberType>, \
-    MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
-    MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>, GMGNumberType>; \
+  template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,2, \
+                                                                     MatrixFreeStokesOperators::StokesOperator<dim,2,GMGNumberType>, \
+                                                                     MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
+                                                                     MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>, GMGNumberType>; \
   template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,3, \
-    MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>, \
-    MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
-    MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>, GMGNumberType>; \
+                                                                     MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>, \
+                                                                     MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
+                                                                     MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>, GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
 
-  ASPECT_INSTANTIATE(INSTANTIATE)
+    ASPECT_INSTANTIATE(INSTANTIATE)
 
 #undef INSTANTIATE
 
-}
+  }

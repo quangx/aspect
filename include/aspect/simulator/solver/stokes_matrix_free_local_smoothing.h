@@ -234,7 +234,7 @@ namespace aspect
       std::unique_ptr<DiagonalBCinvBTType> bc_invbt;
       std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> chebyshev_bc_invbt;
 
-      
+
 
 
       AffineConstraints<double> constraints_v;
