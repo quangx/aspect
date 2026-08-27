@@ -28,6 +28,8 @@
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
 #include <deal.II/base/mg_level_object.h>
+#include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -219,6 +221,8 @@ namespace aspect
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGLaplaceType=MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
+      using DiagonalBCinvBTType=MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>;
+
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
@@ -226,6 +230,12 @@ namespace aspect
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
       GMGLaplaceType Laplace_block_matrix;
+
+      std::unique_ptr<DiagonalBCinvBTType> bc_invbt;
+      std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> chebyshev_bc_invbt;
+      // std::unique_ptr<typename dealii::PreconditionChebyshev <typename DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> chebyshev_bc_invbt;
+
+      
 
 
       AffineConstraints<double> constraints_v;
