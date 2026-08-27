@@ -1559,17 +1559,17 @@ namespace aspect
         chebyshev_data.smoothing_range=15.;
         chebyshev_data.degree=4;
         chebyshev_data.eig_cg_n_iterations=10;
-        chebyshev_data.preconditioner=bc_invbt.get_matrix_diagonal_inverse();
+        chebyshev_data.preconditioner=bc_invbt->get_matrix_diagonal_inverse();
 
         chebyshev_bc_invbt=std::make_unique<typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>();
 
-        chebyshev_bc_invbt->initialize(bc_invbt,chebyshev_data);
+        chebyshev_bc_invbt->initialize(*bc_invbt,chebyshev_data);
 
 
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      chebyshev_bc_invbt,
+                                      *chebyshev_bc_invbt,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1580,7 +1580,7 @@ namespace aspect
                                       Schur_complement_block_matrix);
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          chebyshev_bc_invbt,
+                                          *chebyshev_bc_invbt,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,

@@ -232,8 +232,7 @@ namespace aspect
       GMGLaplaceType Laplace_block_matrix;
 
       std::unique_ptr<DiagonalBCinvBTType> bc_invbt;
-      std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> chebyshev_bc_invbt;
-      // std::unique_ptr<typename dealii::PreconditionChebyshev <typename DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> chebyshev_bc_invbt;
+      std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> chebyshev_bc_invbt;
 
       
 
