@@ -1311,11 +1311,9 @@ namespace aspect
     mg::Matrix<VectorType> mg_interface_Schur(mg_interface_matrices_Schur);
 
     // Laplace for diag BFBT
-    using GMGBBlockOperatorType=MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
-    using GMGBTBlockOperatorType=MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+   
     MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
-    MGLevelObject<BTBlockOperatorType> mg_matrices_BT_block;
-    MGLevelObject<BBlockOperatorType> mg_matrices_B_Block;
+    
 
     mg_interface_matrices_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
     for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
@@ -2213,6 +2211,11 @@ namespace aspect
       mg_matrices_Laplace.clear_elements();
       mg_matrices_Laplace.resize(0,n_levels-1);
 
+      mg_matrices_B_block.clear_elements();
+      mg_matrices_B_block.resize(0,n_levels-1);
+      mg_matrices_BT_block.clear_elements();
+      mg_matrices_BT_block.resize(0,n_levels-1);
+
       for (unsigned int level=0; level<n_levels; ++level)
         {
           AffineConstraints<double> level_constraints_v;
@@ -2365,6 +2368,10 @@ namespace aspect
                                                   mg_constrained_dofs_Schur_complement,
                                                   level,
                                                   selected_dof_handler);
+          }
+          {
+            mg_matrices_B_block[level].initialize(matrix_free_level);
+            mg_matrices_BT_block[level].initialize(matrix_free_level);
           }
         }
     }

@@ -222,6 +222,8 @@ namespace aspect
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGLaplaceType=MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
       using DiagonalBCinvBTType=MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>;
+      using GMGBBlockOperatorType=MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBTBlockOperatorType=MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
 
 
       StokesMatrixType stokes_matrix;
@@ -243,6 +245,8 @@ namespace aspect
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
       MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<BTBlockOperatorType> mg_matrices_BT_block;
+      MGLevelObject<BBlockOperatorType> mg_matrices_B_block;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
