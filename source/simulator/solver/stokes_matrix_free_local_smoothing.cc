@@ -688,6 +688,8 @@ namespace aspect
         mg_matrices_A_block[level].set_cell_data (level_cell_data[level]);
         mg_matrices_Schur_complement[level].set_cell_data (level_cell_data[level]);
         mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
+        mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
+        mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
       }
 
     {
