@@ -29,6 +29,7 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
+#include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/numerics/vector_tools.h>
 
@@ -1310,8 +1311,12 @@ namespace aspect
     mg::Matrix<VectorType> mg_interface_Schur(mg_interface_matrices_Schur);
 
     // Laplace for diag BFBT
-
+    using GMGBBlockOperatorType=MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+    using GMGBTBlockOperatorType=MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
     MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
+    MGLevelObject<BTBlockOperatorType> mg_matrices_BT_block;
+    MGLevelObject<BBlockOperatorType> mg_matrices_B_Block;
+
     mg_interface_matrices_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
     for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
       mg_interface_matrices_Laplace[level].initialize(mg_matrices_Laplace[level]);
@@ -1783,9 +1788,9 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
                                   /*,true*/));
 
