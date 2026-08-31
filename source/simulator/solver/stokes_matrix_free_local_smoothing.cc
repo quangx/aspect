@@ -1551,20 +1551,19 @@ namespace aspect
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
 
-        //MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>
-        bc_invbt=std::make_unique<DiagonalBCinvBTType>(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);
-        bc_invbt->compute_diagonal();
+        bc_invbt.set_up(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);
+        bc_invbt.compute_diagonal();
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
 
         chebyshev_data.smoothing_range=15.;
         chebyshev_data.degree=4;
         chebyshev_data.eig_cg_n_iterations=10;
-        chebyshev_data.preconditioner=bc_invbt->get_matrix_diagonal_inverse();
+        chebyshev_data.preconditioner=bc_invbt.get_matrix_diagonal_inverse();
 
         chebyshev_bc_invbt=std::make_unique<typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>();
 
-        chebyshev_bc_invbt->initialize(*bc_invbt,chebyshev_data);
+        chebyshev_bc_invbt->initialize(bc_invbt,chebyshev_data);
 
 
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;

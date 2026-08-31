@@ -1255,7 +1255,7 @@ namespace aspect
   {
     dealii::LinearAlgebra::distributed::Vector<number> tmp;
     tmp.reinit(dst);
-    BC_invBTOperator.vmult(tmp, src);
+    BC_invBTOperator->vmult(tmp, src);
     dst+=tmp;
 
 
@@ -1267,8 +1267,8 @@ namespace aspect
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
   ::compute_diagonal()
   {
-    const auto &B_matrix_free=*B_operator.get_matrix_free();
-    this->initialize(B_operator.get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
+    const auto &B_matrix_free=*B_operator->get_matrix_free();
+    this->initialize(B_operator->get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
 
     this->inverse_diagonal_entries =
       std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
@@ -1282,7 +1282,7 @@ namespace aspect
     B_matrix_free.initialize_dof_vector(diagonal,1);
     diagonal=0.0;
     const unsigned int n_p_dofs_per_cell=B_matrix_free.get_dof_handler(1).get_fe().n_dofs_per_cell();
-    diag_A_inv.update_ghost_values();
+    diag_A_inv->update_ghost_values();
     for (unsigned int cell = 0; cell<B_matrix_free.n_cell_batches(); ++cell)
       {
         dealii::FEEvaluation<dim, degree_v, degree_v+1, dim, number> u_eval(B_matrix_free,0);
@@ -1290,7 +1290,7 @@ namespace aspect
         u_eval.reinit(cell);
         p_eval.reinit(cell);
 
-        u_eval.read_dof_values(diag_A_inv);
+        u_eval.read_dof_values(*diag_A_inv);
         const unsigned int n_v_dofs=u_eval.dofs_per_cell;
 
         std::vector<dealii::VectorizedArray<number>> local_diag_A_inv(n_v_dofs);
@@ -1328,7 +1328,7 @@ namespace aspect
                 dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<number>> velocity_terms;
                 for (unsigned int d=0; d<dim; ++d)
                   {
-                    velocity_terms[d][d]-=cell_data.pressure_scaling*val_p;
+                    velocity_terms[d][d]-=cell_data->pressure_scaling*val_p;
                   }
                 u_eval.submit_symmetric_gradient(velocity_terms,q);
               }
@@ -1345,7 +1345,7 @@ namespace aspect
             for (const unsigned int q: p_eval.quadrature_point_indices())
               {
                 const auto sym_grad=u_eval.get_symmetric_gradient(q);
-                p_eval.submit_value(-cell_data.pressure_scaling*dealii::trace(sym_grad),q);
+                p_eval.submit_value(-cell_data->pressure_scaling*dealii::trace(sym_grad),q);
 
               }
             p_eval.integrate(dealii::EvaluationFlags::values);
