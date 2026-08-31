@@ -19,6 +19,7 @@
  */
 
 
+#include "aspect/simulator/solver/block_stokes_preconditioner.h"
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 #include <aspect/mesh_deformation/interface.h>
@@ -1207,19 +1208,43 @@ namespace aspect
       }
   }
 
+  // template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+  // MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>
+  // ::DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
+  //                            const BOperatorType &B_operator,
+  //                            const BTOperatorType &BT_operator,
+  //                            const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+  //                            const OperatorCellData<dim, number> &cell_data):
+  //   BC_invBTOperator(system_matrix,B_operator,BT_operator,diag_A_inv),
+  //   B_operator(B_operator),
+  //   BT_operator(BT_operator),
+  //   diag_A_inv(diag_A_inv),
+  //   cell_data(cell_data)
+  // {}
+  
+
   template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
-  MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>
-  ::DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
-                             const BOperatorType &B_operator,
-                             const BTOperatorType &BT_operator,
-                             const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-                             const OperatorCellData<dim, number> &cell_data):
-    BC_invBTOperator(system_matrix,B_operator,BT_operator,diag_A_inv),
-    B_operator(B_operator),
-    BT_operator(BT_operator),
-    diag_A_inv(diag_A_inv),
-    cell_data(cell_data)
-  {}
+
+  void MatrixFreeStokesOperators
+  ::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::set_up(
+    const StokesMatrixType &system_matrix,
+                              const BOperatorType &B_operator,
+                              const BTOperatorType &BT_operator,
+                              const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                             const OperatorCellData<dim, number> &cell_data
+  ){
+    this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<StokesMatrixType,BOperatorType,BTOperatorType>>(system_matrix,
+    B_operator, BT_operator, diag_A_inv);
+    
+    this->B_operator=&B_operator;
+    this->diag_A_inv=&diag_A_inv;
+    this->cell_data=&cell_data;
+
+  }
+
+
+
+
 
 
 
