@@ -2401,6 +2401,13 @@ namespace aspect
         mg_matrices_Schur_complement[level].compute_diagonal();
         mg_matrices_Laplace[level].compute_diagonal();
         mg_matrices_A_block[level].compute_diagonal();
+        if(this->get_parameters().use_bfbt){
+          const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
+          mg_matrices_BCinvBT[level].set_up(mg_matrices_A_block[level], mg_matrices_B_block[level], mg_matrices_BT_block[level],
+          level_diag_A_inv, level_cell_data[level]);
+          mg_matrices_BCinvBT[level].compute_diagonal();
+
+        }
       }
 
     this->get_computing_timer().leave_subsection("Build Stokes preconditioner");

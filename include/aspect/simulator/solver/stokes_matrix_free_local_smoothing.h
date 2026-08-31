@@ -220,10 +220,12 @@ namespace aspect
       using BBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
-      using GMGLaplaceType=MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
-      using DiagonalBCinvBTType=MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>;
-      using GMGBBlockOperatorType=MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
-      using GMGBTBlockOperatorType=MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
+      using DiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>;
+      using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGDiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, MatrixFreeStokesOperators::StokesOperator<dim, velocity_degree, GMGNumberType>, GMGBBlockOperatorType, GMGBTBlockOperatorType,GMGNumberType>;
+
 
 
       StokesMatrixType stokes_matrix;
@@ -232,6 +234,7 @@ namespace aspect
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
       GMGLaplaceType Laplace_block_matrix;
+      
 
       DiagonalBCinvBTType bc_invbt;
       std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> chebyshev_bc_invbt;
@@ -245,8 +248,9 @@ namespace aspect
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
       MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
-      MGLevelObject<BTBlockOperatorType> mg_matrices_BT_block;
-      MGLevelObject<BBlockOperatorType> mg_matrices_B_block;
+      MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
+      MGLevelObject<GMGBBlockOperatorType> mg_matrices_B_block;
+      MGLevelObject<GMGDiagonalBCinvBTType> mg_matrices_BCinvBT;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
