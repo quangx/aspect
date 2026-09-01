@@ -1400,6 +1400,7 @@ namespace aspect
     mg_transfer_Schur_complement,
     mg_smoother_BCinvBT,
     mg_smoother_BCinvBT);
+    mg_BCinvBT.set_edge_matrices(mg_interface_BCinvBT, mg_interface_BCinvBT);
 
 
 
@@ -1618,10 +1619,10 @@ namespace aspect
         chebyshev_bc_invbt->initialize(bc_invbt,chebyshev_data);
 
 
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      *chebyshev_bc_invbt,
+                                      prec_BCinvBT,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -1632,7 +1633,7 @@ namespace aspect
                                       Schur_complement_block_matrix);
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          *chebyshev_bc_invbt,
+                                          prec_BCinvBT,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
@@ -2263,6 +2264,9 @@ namespace aspect
       mg_matrices_A_block.resize(0, n_levels-1);
       mg_matrices_Laplace.clear_elements();
       mg_matrices_Laplace.resize(0,n_levels-1);
+      mg_matrices_BCinvBT.clear_elements();
+      mg_matrices_BCinvBT.resize(0, n_levels-1);
+
 
       mg_matrices_B_block.clear_elements();
       mg_matrices_B_block.resize(0,n_levels-1);
