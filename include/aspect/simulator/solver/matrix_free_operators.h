@@ -651,7 +651,7 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
-    template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+    template<int dim, int degree_v,class BOperatorType, class BTOperatorType, typename number>
     class DiagonalBC_invBTOperator: public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
     {
       public:
@@ -661,8 +661,7 @@ namespace aspect
         //                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
         //                          const OperatorCellData<dim, number> &cell_data);
         DiagonalBC_invBTOperator()=default;
-        void set_up(const StokesMatrixType &system_matrix,
-                   const BOperatorType &B_operator,
+        void set_up(const BOperatorType &B_operator,
                   const BTOperatorType &BT_operator,
                    const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
                    const OperatorCellData<dim, number> &cell_data);
@@ -671,7 +670,7 @@ namespace aspect
       private:
         void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
-        std::unique_ptr<internal::BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>> BC_invBTOperator;
+        std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BC_invBTOperator;
         const BOperatorType *B_operator=nullptr;
         const BTOperatorType *BT_operator=nullptr;
         const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;

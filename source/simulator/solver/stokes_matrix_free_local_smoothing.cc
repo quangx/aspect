@@ -81,17 +81,24 @@ namespace aspect
     }
 
 
-    template<class StokesMatrixType, class BOperatorType, class BTOperatorType>
-    void BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+    template<class BOperatorType, class BTOperatorType>
+    void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
                                                                                    const dealii::LinearAlgebra::distributed::Vector<double> &src) const
     {
       dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
       dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
+
+      const auto &B_matrix_free=*B_operator.get_matrix_free();
       block_src.reinit(2);
       block_dst.reinit(2);
 
-      system_matrix.initialize_dof_vector(block_src);
-      system_matrix.initialize_dof_vector(block_dst);
+      B_matrix_free.initialize_dof_vector(block_src.block(0),0);
+      B_matrix_free.initialize_dof_vector(block_src.block(1),1);
+
+      B_matrix_free.initialize_dof_vector(block_dst.block(0),0);
+      B_matrix_free.initialize_dof_vector(block_dst.block(1),1);
+
+
 
       block_src.block(1)=src;
       block_src.block(0)=0;
@@ -139,8 +146,8 @@ namespace aspect
     {
       try
         {
-          BC_invBT_Operator<StokesMatrixType, BOperatorType, BTOperatorType>
-          Op_BC_invBT(system_matrix, B_operator, BT_operator, diag_A_inv);
+          BC_invBT_Operator<BOperatorType, BTOperatorType>
+          Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
 
           //try two  v cycles to reduce iteration counts
@@ -1206,11 +1213,12 @@ namespace aspect
     mg_smoother_Schur(4);
 
     using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
-    using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
     mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
     mg_smoother_Laplace(4);
 
-    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> mg_smoother_BCinvBT(4);
+    using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
+    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> 
+    mg_smoother_BCinvBT(4);
     {
       MGLevelObject<typename MSmootherType::AdditionalData> smoother_data_Schur;
       MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
@@ -1595,22 +1603,22 @@ namespace aspect
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
 
-        bc_invbt.set_up(stokes_matrix,B_block,BT_block,diag_A_inv,active_cell_data);
+        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data);
         bc_invbt.compute_diagonal();
 
-        typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
+        typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
 
         chebyshev_data.smoothing_range=15.;
         chebyshev_data.degree=4;
         chebyshev_data.eig_cg_n_iterations=10;
         chebyshev_data.preconditioner=bc_invbt.get_matrix_diagonal_inverse();
 
-        chebyshev_bc_invbt=std::make_unique<typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>();
+        chebyshev_bc_invbt=std::make_unique<typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree,  BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>();
 
         chebyshev_bc_invbt->initialize(bc_invbt,chebyshev_data);
 
 
-        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;
+        using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, PreconditionChebyshev<MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       *chebyshev_bc_invbt,
@@ -2447,7 +2455,7 @@ namespace aspect
         mg_matrices_A_block[level].compute_diagonal();
         if(this->get_parameters().use_bfbt){
           const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
-          mg_matrices_BCinvBT[level].set_up(mg_matrices_A_block[level], mg_matrices_B_block[level], mg_matrices_BT_block[level],
+          mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level], mg_matrices_BT_block[level],
           level_diag_A_inv, level_cell_data[level]);
           mg_matrices_BCinvBT[level].compute_diagonal();
 

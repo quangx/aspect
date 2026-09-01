@@ -221,10 +221,10 @@ namespace aspect
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
-      using DiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, StokesMatrixType, BBlockOperatorType, BTBlockOperatorType, double>;
+      using DiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>;
       using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
-      using GMGDiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, MatrixFreeStokesOperators::StokesOperator<dim, velocity_degree, GMGNumberType>, GMGBBlockOperatorType, GMGBTBlockOperatorType,GMGNumberType>;
+      using GMGDiagonalBCinvBTType = MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, GMGBBlockOperatorType, GMGBTBlockOperatorType,GMGNumberType>;
 
 
 

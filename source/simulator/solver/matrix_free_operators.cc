@@ -1223,17 +1223,16 @@ namespace aspect
   // {}
   
 
-  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+  template<int dim, int degree_v, class BOperatorType, class BTOperatorType, typename number>
 
   void MatrixFreeStokesOperators
-  ::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::set_up(
-    const StokesMatrixType &system_matrix,
+  ::DiagonalBC_invBTOperator<dim, degree_v, BOperatorType, BTOperatorType, number>::set_up(
                               const BOperatorType &B_operator,
                               const BTOperatorType &BT_operator,
                               const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
                              const OperatorCellData<dim, number> &cell_data
   ){
-    this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<StokesMatrixType,BOperatorType,BTOperatorType>>(system_matrix,
+    this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<BOperatorType,BTOperatorType>>(
     B_operator, BT_operator, diag_A_inv);
     
     this->B_operator=&B_operator;
@@ -1249,8 +1248,8 @@ namespace aspect
 
 
   //wraps the action of BC^{-1}B^T
-  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
-  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType, BOperatorType, BTOperatorType, number>::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
+  template<int dim, int degree_v,  class BOperatorType, class BTOperatorType, typename number>
+  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, BOperatorType, BTOperatorType, number>::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
       const dealii::LinearAlgebra::distributed::Vector<number> &src) const
   {
     dealii::LinearAlgebra::distributed::Vector<number> tmp;
@@ -1262,9 +1261,9 @@ namespace aspect
 
   }
 
-  template<int dim, int degree_v, class StokesMatrixType, class BOperatorType, class BTOperatorType, typename number>
+  template<int dim, int degree_v,  class BOperatorType, class BTOperatorType, typename number>
 
-  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v, StokesMatrixType,  BOperatorType,  BTOperatorType, number>
+  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v,BOperatorType,  BTOperatorType, number>
   ::compute_diagonal()
   {
     const auto &B_matrix_free=*B_operator->get_matrix_free();
@@ -1403,11 +1402,9 @@ namespace aspect
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,2, \
-                                                                     MatrixFreeStokesOperators::StokesOperator<dim,2,GMGNumberType>, \
                                                                      MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
                                                                      MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>, GMGNumberType>; \
   template class MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim,3, \
-                                                                     MatrixFreeStokesOperators::StokesOperator<dim,3,GMGNumberType>, \
                                                                      MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
                                                                      MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>, GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
