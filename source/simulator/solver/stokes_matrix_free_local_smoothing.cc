@@ -31,6 +31,9 @@
 
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
+#include <deal.II/multigrid/mg_coarse.h>
+#include <deal.II/multigrid/mg_matrix.h>
+#include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/numerics/vector_tools.h>
 
 #include <deal.II/matrix_free/tools.h>
@@ -1203,14 +1206,19 @@ namespace aspect
     mg_smoother_Schur(4);
 
     using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
+    using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
     mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
     mg_smoother_Laplace(4);
+
+    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> mg_smoother_BCinvBT(4);
     {
       MGLevelObject<typename MSmootherType::AdditionalData> smoother_data_Schur;
       MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
+      MGLevelObject<typename MSmootherBCinvBTType::AdditionalData> smoother_data_BCinvBT;
 
       smoother_data_Schur.resize(0, this->get_triangulation().n_global_levels()-1);
       smoother_data_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
+      smoother_data_BCinvBT.resize(0, this->get_triangulation().n_global_levels()-1);
 
       for (unsigned int level = 0; level<this->get_triangulation().n_global_levels(); ++level)
         {
@@ -1223,6 +1231,10 @@ namespace aspect
               smoother_data_Laplace[level].smoothing_range = 15.;
               smoother_data_Laplace[level].degree = 4;
               smoother_data_Laplace[level].eig_cg_n_iterations = 10;
+
+              smoother_data_BCinvBT[level].smoothing_range=15.;
+              smoother_data_BCinvBT[level].degree = 4;
+              smoother_data_BCinvBT[level].eig_cg_n_iterations=10;
             }
           else
             {
@@ -1233,12 +1245,18 @@ namespace aspect
               smoother_data_Laplace[level].smoothing_range = 1e-3;
               smoother_data_Laplace[level].degree = 8;
               smoother_data_Laplace[level].eig_cg_n_iterations = 100;
+
+              smoother_data_BCinvBT[level].smoothing_range = 1e-3;
+              smoother_data_BCinvBT[level].degree = 8;
+              smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
             }
           smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
-          smoother_data_Laplace[level].preconditioner=mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
+          smoother_data_Laplace[level].preconditioner = mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
+          smoother_data_BCinvBT[level].preconditioner = mg_matrices_BCinvBT[level].get_matrix_diagonal_inverse();
         }
       mg_smoother_Schur.initialize(mg_matrices_Schur_complement, smoother_data_Schur);
       mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
+      mg_smoother_BCinvBT.initialize(mg_matrices_BCinvBT,smoother_data_BCinvBT);
     }
 
     // Estimate the eigenvalues for the Chebyshev smoothers.
@@ -1255,10 +1273,12 @@ namespace aspect
         mg_matrices_A_block[level].initialize_dof_vector(temp_velocity);
         mg_matrices_Schur_complement[level].initialize_dof_vector(temp_pressure);
         mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
+        mg_matrices_BCinvBT[level].initialize_dof_vector(temp_pressure);
 
         mg_smoother_A[level].estimate_eigenvalues(temp_velocity);
         mg_smoother_Schur[level].estimate_eigenvalues(temp_pressure);
         mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
+        mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
 
         if (level==0)
           {
@@ -1281,6 +1301,10 @@ namespace aspect
     //Pressure laplace for diag BFBT GMG
     MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
     mg_coarse_Laplace.initialize(mg_smoother_Laplace);
+
+    //Diag Bdiag(A)^{-1}B^T for diag A BFBT GMG
+    MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
+    mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
 
 
     if (print_details)
@@ -1322,10 +1346,21 @@ namespace aspect
       mg_interface_matrices_Laplace[level].initialize(mg_matrices_Laplace[level]);
     mg::Matrix<VectorType> mg_interface_Laplace(mg_interface_matrices_Laplace);
 
+
+    // BCinvBT for diag BFBT
+    MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGDiagonalBCinvBTType>> mg_interface_matrices_BCinvBT;
+
+    mg_interface_matrices_BCinvBT.resize(0, this->get_triangulation().n_global_levels()-1);
+    for(unsigned int level= 0; level < this -> get_triangulation().n_global_levels(); ++level){
+      mg_interface_matrices_BCinvBT[level].initialize(mg_matrices_BCinvBT[level]);
+    }
+    mg::Matrix<VectorType> mg_interface_BCinvBT(mg_interface_matrices_BCinvBT);
+
     // MG Matrix
     mg::Matrix<VectorType> mg_matrix_A(mg_matrices_A_block);
     mg::Matrix<VectorType> mg_matrix_Schur(mg_matrices_Schur_complement);
     mg::Matrix<VectorType> mg_matrix_Laplace(mg_matrices_Laplace);
+    mg::Matrix<VectorType> mg_matrix_BCinvBT(mg_matrices_BCinvBT);
     // MG object
     // ABlock GMG
     Multigrid<VectorType> mg_A(mg_matrix_A,
@@ -1351,12 +1386,21 @@ namespace aspect
                                      mg_smoother_Laplace);
     mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
 
+    //Diag A BFBT BCinvBT GMG
+    Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
+    mg_coarse_BCinvBT,
+    mg_transfer_Schur_complement,
+    mg_smoother_BCinvBT,
+    mg_smoother_BCinvBT);
+
+
+
     // GMG Preconditioner for ABlock and Schur complement
     using GMGPreconditioner = PreconditionMG<dim, VectorType, MGTransferMF<dim,GMGNumberType>>;
     GMGPreconditioner prec_A(dof_handler_v, mg_A, mg_transfer_A_block);
     GMGPreconditioner prec_Schur(dof_handler_p, mg_Schur, mg_transfer_Schur_complement);
     GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
-
+    GMGPreconditioner prec_BCinvBT(dof_handler_p, mg_BCinvBT, mg_transfer_Schur_complement);
 
 
 
