@@ -274,7 +274,7 @@ namespace aspect
           ptmp.add(-ptmp.mean_value());
 
 
-          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
+          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
