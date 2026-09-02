@@ -30,6 +30,7 @@
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <deal.II/multigrid/mg_base.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
@@ -651,6 +652,8 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+
+
     template<int dim, int degree_v,class BOperatorType, class BTOperatorType, typename number>
     class DiagonalBC_invBTOperator: public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
     {
@@ -675,6 +678,17 @@ namespace aspect
         const BTOperatorType *BT_operator=nullptr;
         const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;
         const OperatorCellData<dim,number> *cell_data=nullptr;
+    };
+
+    template <typename VectorType>
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>{
+      public:
+         void operator()(const unsigned int level,
+                                VectorType &dst,
+                               const VectorType &src) const override;
+         void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+      private:
+          dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
     };
   }
 

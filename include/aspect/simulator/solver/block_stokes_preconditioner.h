@@ -25,16 +25,50 @@
 #include<aspect/utilities.h>
 #include <deal.II/lac/solver_bicgstab.h>
 #include <deal.II/lac/solver_cg.h>
+#include <deal.II/multigrid/mg_base.h>
+#include <deal.II/multigrid/mg_coarse.h>
+
 
 
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
+#include <deal.II/multigrid/mg_smoother.h>
 
 namespace aspect
 {
 
   namespace internal
   {
+    /**
+     * Applies nullspace removal in coarser grids in v cycle.
+     */
+    template<typename VectorType, typename SmootherType>
+    class MGSmootherRemoveNullspace: public dealii::MGSmootherBase<VectorType>{
+      public: 
+      
+      virtual void smooth(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+      virtual void apply(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+      virtual void clear() override;
+      void initialize(const SmootherType &smoother);
+
+      private:
+      const SmootherType *smoother=nullptr;
+    };
+    /**
+      * Applies the coarse grid solve with a mean value nullspace removal.
+      * Used in diag A bfbt BC^{-1}B^T v-cycle.
+      */
+    template <typename VectorType>
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>{
+      public:
+         virtual void operator()(const unsigned int level,
+                                VectorType &dst,
+                               const VectorType &src) const override;
+         void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+      private:
+         const dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
+    };
+    
     /**
       * This class is used in the implementation of the right preconditioner
       * as an approximation for the inverse of the velocity (A) block.

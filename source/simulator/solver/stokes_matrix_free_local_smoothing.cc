@@ -29,6 +29,7 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
+#include <cstdlib>
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/multigrid/mg_coarse.h>
@@ -52,6 +53,46 @@ namespace aspect
 
   namespace internal
   {
+
+    template<typename VectorType, typename SmootherType>
+    void MGSmootherRemoveNullspace<VectorType, SmootherType>::clear()
+    {}
+
+    template<typename VectorType, typename SmootherType>
+    void MGSmootherRemoveNullspace<VectorType, SmootherType>::smooth(const unsigned int level,
+      VectorType &dst, const VectorType &src) const{
+        smoother->smooth(level, dst, src);
+        dst.add(-dst.mean_value());
+      }
+
+
+    template<typename VectorType, typename SmootherType>
+    void MGSmootherRemoveNullspace<VectorType, SmootherType>::apply(const unsigned int level, VectorType &dst,
+    const VectorType &src) const{
+      smoother->apply(level,dst,src);
+      dst.add(-dst.mean_value());
+    }
+
+    template<typename VectorType, typename SmootherType>
+    void MGSmootherRemoveNullspace<VectorType, SmootherType>::initialize(const SmootherType &smoother){
+      this->smoother=&smoother;
+    }
+    template<typename VectorType>
+
+    void MGCoarseGridApplySmootherRemoveNullspace<VectorType>::operator()(const unsigned int level,
+                                VectorType &dst,
+                               const VectorType &src) const
+    {
+      (*coarse_grid_solver)(level,dst,src);
+      dst.add(-dst.mean_value());
+    } 
+
+    template<typename VectorType>
+
+    void MGCoarseGridApplySmootherRemoveNullspace<VectorType>::initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver){
+      this->coarse_grid_solver = &coarse_grid_solver;
+    }
+
     template<class VectorType>
     struct Nullspace
     {
@@ -227,6 +268,12 @@ namespace aspect
           // std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
 
           mp_preconditioner.vmult(ptmp,rhs1);
+          if(std::abs(ptmp.mean_value())> (1e-6*rhs1.l2_norm())){
+            std::cout<<"ptmp mean value is "<<ptmp.mean_value();
+
+          }
+          ptmp.add(-ptmp.mean_value());
+
 
           // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
@@ -268,6 +315,10 @@ namespace aspect
             }
           dst = 0;
           mp_preconditioner.vmult(dst,rhs2);
+          if(std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm())){
+            std::cout<<"dst mean value is "<<dst.mean_value();
+          }
+          dst.add(-dst.mean_value());
           // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
@@ -1217,8 +1268,11 @@ namespace aspect
     mg_smoother_Laplace(4);
 
     using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
-    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> 
+    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>
     mg_smoother_BCinvBT(4);
+    internal::MGSmootherRemoveNullspace<VectorType,     mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>>
+    mg_smoother_BCinvBT_remove_ns;
+    mg_smoother_BCinvBT_remove_ns.initialize(mg_smoother_BCinvBT);
     {
       MGLevelObject<typename MSmootherType::AdditionalData> smoother_data_Schur;
       MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
@@ -1314,6 +1368,9 @@ namespace aspect
     MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
     mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
 
+    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
+    mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
+
 
     if (print_details)
       {
@@ -1396,10 +1453,10 @@ namespace aspect
 
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
-    mg_coarse_BCinvBT,
+    mg_coarse_BCinvBT_remove_ns,
     mg_transfer_Schur_complement,
-    mg_smoother_BCinvBT,
-    mg_smoother_BCinvBT);
+    mg_smoother_BCinvBT_remove_ns,
+    mg_smoother_BCinvBT_remove_ns);
     mg_BCinvBT.set_edge_matrices(mg_interface_BCinvBT, mg_interface_BCinvBT);
 
 
