@@ -1951,10 +1951,10 @@ namespace aspect
                                                           this->get_parameters().stokes_gmres_restart_length :
                                                           std::max(this->get_parameters().stokes_gmres_restart_length, 100U));
 
-        SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+        SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
         solver(solver_control_expensive, mem,
-               SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
-               AdditionalData(number_of_temporary_vectors));
+               SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+               AdditionalData(number_of_temporary_vectors,true));
 
         try
           {
