@@ -261,13 +261,13 @@ namespace aspect
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
           IterationNumberControl iteration_control(5);
 
-          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
+          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:solver_control), mem);
           ptmp = 0;
           // mp_preconditioner.vmult(ptmp,rhs1);
           // std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
           // std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
 
-          mp_preconditioner.vmult(ptmp,rhs1);
+          // mp_preconditioner.vmult(ptmp,rhs1);
           if(std::abs(ptmp.mean_value())> (1e-6*rhs1.l2_norm())){
             std::cout<<"ptmp mean value is "<<ptmp.mean_value();
 
@@ -275,7 +275,7 @@ namespace aspect
           ptmp.add(-ptmp.mean_value());
 
 
-          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           // std::cout << "A: x " << rhs1.l2_norm() << " -> y " << ptmp.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
           n_iterations_ += solver_control.last_step();
 
@@ -314,12 +314,12 @@ namespace aspect
               solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
             }
           dst = 0;
-          mp_preconditioner.vmult(dst,rhs2);
+          // mp_preconditioner.vmult(dst,rhs2);
           if(std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm())){
             std::cout<<"dst mean value is "<<dst.mean_value();
           }
           dst.add(-dst.mean_value());
-          // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
           // std::cout << "B: x " << rhs2.l2_norm() << " -> y " << dst.l2_norm() << " in " <<  solver_control.last_step() << " iterations "<< std::endl;
