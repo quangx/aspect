@@ -1896,10 +1896,10 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
-                   AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
+                   SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   AdditionalData(this->get_parameters().stokes_gmres_restart_length+2, true
                                   /*,true*/));
 
             solver.solve (stokes_matrix,
@@ -1950,10 +1950,10 @@ namespace aspect
                                                           this->get_parameters().stokes_gmres_restart_length :
                                                           std::max(this->get_parameters().stokes_gmres_restart_length, 100U));
 
-        SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+        SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
         solver(solver_control_expensive, mem,
-               SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
-               AdditionalData(number_of_temporary_vectors,true));
+               SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+               AdditionalData(number_of_temporary_vectors));
 
         try
           {
