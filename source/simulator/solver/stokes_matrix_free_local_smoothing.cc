@@ -62,7 +62,7 @@ namespace aspect
     void MGSmootherRemoveNullspace<VectorType, SmootherType>::smooth(const unsigned int level,
       VectorType &dst, const VectorType &src) const{
         smoother->smooth(level, dst, src);
-        dst.add(-dst.mean_value());
+        // dst.add(-dst.mean_value());
       }
 
 
@@ -70,7 +70,7 @@ namespace aspect
     void MGSmootherRemoveNullspace<VectorType, SmootherType>::apply(const unsigned int level, VectorType &dst,
     const VectorType &src) const{
       smoother->apply(level,dst,src);
-      dst.add(-dst.mean_value());
+      // dst.add(-dst.mean_value());
     }
 
     template<typename VectorType, typename SmootherType>
@@ -84,7 +84,7 @@ namespace aspect
                                const VectorType &src) const
     {
       (*coarse_grid_solver)(level,dst,src);
-      dst.add(-dst.mean_value());
+      // dst.add(-dst.mean_value());
     } 
 
     template<typename VectorType>
@@ -254,7 +254,7 @@ namespace aspect
 
 
           VectorType rhs1=src; //nullspace removal
-          rhs1.add(-rhs1.mean_value());
+          // rhs1.add(-rhs1.mean_value());
 
 
 
@@ -267,11 +267,11 @@ namespace aspect
           // std::cout<<"rhs1 norm = "<<rhs1.l2_norm();
           // std::cout<<"\n ptmp_norm - "<<ptmp.l2_norm()<<std::endl;
 
-          if(std::abs(ptmp.mean_value())> (1e-6*rhs1.l2_norm())){
-            std::cout<<"ptmp mean value is "<<ptmp.mean_value();
+          // if(std::abs(ptmp.mean_value())> (1e-6*rhs1.l2_norm())){
+          //   std::cout<<"ptmp mean value is "<<ptmp.mean_value();
 
-          }
-          ptmp.add(-ptmp.mean_value());
+          // }
+          // ptmp.add(-ptmp.mean_value());
 
 
           // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
@@ -304,7 +304,7 @@ namespace aspect
           }
 
           VectorType rhs2=ptmp2;
-          rhs2.add(-rhs2.mean_value());
+          // rhs2.add(-rhs2.mean_value());
 
 
 
@@ -314,10 +314,10 @@ namespace aspect
             }
           dst = 0;
           mp_preconditioner.vmult(dst,rhs2);
-          if(std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm())){
-            std::cout<<"dst mean value is "<<dst.mean_value();
-          }
-          dst.add(-dst.mean_value());
+          // if(std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm())){
+          //   std::cout<<"dst mean value is "<<dst.mean_value();
+          // }
+          // dst.add(-dst.mean_value());
           // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           //std::cout << "applying op_BC_invBT:" << std::endl;
           //op_BC_invBT.vmult(dst,rhs2);
