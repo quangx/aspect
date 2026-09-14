@@ -43,32 +43,34 @@ namespace aspect
      * Applies nullspace removal in coarser grids in v cycle.
      */
     template<typename VectorType, typename SmootherType>
-    class MGSmootherRemoveNullspace: public dealii::MGSmootherBase<VectorType>{
-      public: 
-      
-      virtual void smooth(const unsigned int level, VectorType &dst, const VectorType &src) const override;
-      virtual void apply(const unsigned int level, VectorType &dst, const VectorType &src) const override;
-      virtual void clear() override;
-      void initialize(const SmootherType &smoother);
+    class MGSmootherRemoveNullspace: public dealii::MGSmootherBase<VectorType>
+    {
+      public:
+
+        virtual void smooth(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+        virtual void apply(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+        virtual void clear() override;
+        void initialize(const SmootherType &smoother);
 
       private:
-      const SmootherType *smoother=nullptr;
+        const SmootherType *smoother=nullptr;
     };
     /**
       * Applies the coarse grid solve with a mean value nullspace removal.
       * Used in diag A bfbt BC^{-1}B^T v-cycle.
       */
     template <typename VectorType>
-    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>{
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
+    {
       public:
-         virtual void operator()(const unsigned int level,
+        virtual void operator()(const unsigned int level,
                                 VectorType &dst,
-                               const VectorType &src) const override;
-         void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+                                const VectorType &src) const override;
+        void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
       private:
-         const dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
+        const dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
     };
-    
+
     /**
       * This class is used in the implementation of the right preconditioner
       * as an approximation for the inverse of the velocity (A) block.
@@ -395,9 +397,9 @@ namespace aspect
     {
       public:
         BC_invBT_Operator(
-                          const BOperatorType &B_operator,
-                          const BTOperatorType &BT_operator,
-                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
+          const BOperatorType &B_operator,
+          const BTOperatorType &BT_operator,
+          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
           B_operator(B_operator),
           BT_operator(BT_operator),
           diag_A_inv(diag_A_inv)

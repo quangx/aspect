@@ -60,36 +60,40 @@ namespace aspect
 
     template<typename VectorType, typename SmootherType>
     void MGSmootherRemoveNullspace<VectorType, SmootherType>::smooth(const unsigned int level,
-      VectorType &dst, const VectorType &src) const{
-        smoother->smooth(level, dst, src);
-        dst.add(-dst.mean_value());
-      }
+                                                                     VectorType &dst, const VectorType &src) const
+    {
+      smoother->smooth(level, dst, src);
+      dst.add(-dst.mean_value());
+    }
 
 
     template<typename VectorType, typename SmootherType>
     void MGSmootherRemoveNullspace<VectorType, SmootherType>::apply(const unsigned int level, VectorType &dst,
-    const VectorType &src) const{
+                                                                    const VectorType &src) const
+    {
       smoother->apply(level,dst,src);
       dst.add(-dst.mean_value());
     }
 
     template<typename VectorType, typename SmootherType>
-    void MGSmootherRemoveNullspace<VectorType, SmootherType>::initialize(const SmootherType &smoother){
+    void MGSmootherRemoveNullspace<VectorType, SmootherType>::initialize(const SmootherType &smoother)
+    {
       this->smoother=&smoother;
     }
     template<typename VectorType>
 
     void MGCoarseGridApplySmootherRemoveNullspace<VectorType>::operator()(const unsigned int level,
-                                VectorType &dst,
-                               const VectorType &src) const
+                                                                          VectorType &dst,
+                                                                          const VectorType &src) const
     {
       (*coarse_grid_solver)(level,dst,src);
       dst.add(-dst.mean_value());
-    } 
+    }
 
     template<typename VectorType>
 
-    void MGCoarseGridApplySmootherRemoveNullspace<VectorType>::initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver){
+    void MGCoarseGridApplySmootherRemoveNullspace<VectorType>::initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver)
+    {
       this->coarse_grid_solver = &coarse_grid_solver;
     }
 
@@ -124,7 +128,7 @@ namespace aspect
 
     template<class BOperatorType, class BTOperatorType>
     void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
-                                                                                   const dealii::LinearAlgebra::distributed::Vector<double> &src) const
+                                                                 const dealii::LinearAlgebra::distributed::Vector<double> &src) const
     {
       dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
       dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
@@ -191,7 +195,7 @@ namespace aspect
           Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
 
-          
+
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
           {
             v.reinit(src);
@@ -249,9 +253,9 @@ namespace aspect
           SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
           ptmp = 0;
           mp_preconditioner.vmult(ptmp,rhs1);
-          
 
-         
+
+
 
           // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
           n_iterations_ += solver_control.last_step();
@@ -292,9 +296,10 @@ namespace aspect
             }
           dst = 0;
           mp_preconditioner.vmult(dst,rhs2);
-          if(std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm())){
-            std::cout<<"dst mean value is "<<dst.mean_value();
-          }
+          if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
+            {
+              std::cout<<"dst mean value is "<<dst.mean_value();
+            }
           dst.add(-dst.mean_value());
           // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           n_iterations_ += solver_control.last_step();
@@ -1260,51 +1265,73 @@ namespace aspect
         {
           if (level > 0)
             {
-              smoother_data_Schur[level].smoothing_range = 15.;
-              smoother_data_Schur[level].degree = 4;
-              smoother_data_Schur[level].eig_cg_n_iterations = 10;
-              
-              if(this->get_parameters().use_bfbt){
 
-              // smoother_data_Laplace[level].smoothing_range = 15.;
-              // smoother_data_Laplace[level].degree = 4;
-              // smoother_data_Laplace[level].eig_cg_n_iterations = 10;
 
-              smoother_data_BCinvBT[level].smoothing_range=15.;
-              smoother_data_BCinvBT[level].degree = 4;
-              smoother_data_BCinvBT[level].eig_cg_n_iterations=10;
-              }
+              if (this->get_parameters().use_bfbt)
+                {
+
+                  // smoother_data_Laplace[level].smoothing_range = 15.;
+                  // smoother_data_Laplace[level].degree = 4;
+                  // smoother_data_Laplace[level].eig_cg_n_iterations = 10;
+
+                  smoother_data_BCinvBT[level].smoothing_range=15.;
+                  smoother_data_BCinvBT[level].degree = 4;
+                  smoother_data_BCinvBT[level].eig_cg_n_iterations=10;
+                }
+              else
+                {
+                  smoother_data_Schur[level].smoothing_range = 15.;
+                  smoother_data_Schur[level].degree = 4;
+                  smoother_data_Schur[level].eig_cg_n_iterations = 10;
+
+                }
             }
           else
             {
-              smoother_data_Schur[0].smoothing_range = 1e-3;
-              smoother_data_Schur[0].degree = 8;
-              smoother_data_Schur[0].eig_cg_n_iterations = 100;
-
-              if(this->get_parameters().use_bfbt){
 
 
-              // smoother_data_Laplace[level].smoothing_range = 1e-3;
-              // smoother_data_Laplace[level].degree = 8;
-              // smoother_data_Laplace[level].eig_cg_n_iterations = 100;
+              if (this->get_parameters().use_bfbt)
+                {
 
-              smoother_data_BCinvBT[level].smoothing_range = 1e-3;
-              smoother_data_BCinvBT[level].degree = 8;
-              smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
-              }
+
+                  // smoother_data_Laplace[level].smoothing_range = 1e-3;
+                  // smoother_data_Laplace[level].degree = 8;
+                  // smoother_data_Laplace[level].eig_cg_n_iterations = 100;
+
+                  smoother_data_BCinvBT[level].smoothing_range = 1e-3;
+                  smoother_data_BCinvBT[level].degree = 8;
+                  smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
+                }
+              else
+                {
+                  smoother_data_Schur[0].smoothing_range = 1e-3;
+                  smoother_data_Schur[0].degree = 8;
+                  smoother_data_Schur[0].eig_cg_n_iterations = 100;
+
+                }
             }
-          smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
-                        if(this->get_parameters().use_bfbt){
+          if (this->get_parameters().use_bfbt)
+            {
 
-          // smoother_data_Laplace[level].preconditioner = mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
-          smoother_data_BCinvBT[level].preconditioner = mg_matrices_BCinvBT[level].get_matrix_diagonal_inverse();
-                        }
+              // smoother_data_Laplace[level].preconditioner = mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
+              smoother_data_BCinvBT[level].preconditioner = mg_matrices_BCinvBT[level].get_matrix_diagonal_inverse();
+            }
+          else
+            {
+              smoother_data_Schur[level].preconditioner = mg_matrices_Schur_complement[level].get_matrix_diagonal_inverse();
+
+            }
         }
-      mg_smoother_Schur.initialize(mg_matrices_Schur_complement, smoother_data_Schur);
-      if(this->get_parameters().use_bfbt){
-      // mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
-      mg_smoother_BCinvBT.initialize(mg_matrices_BCinvBT,smoother_data_BCinvBT);
-      }
+      if (this->get_parameters().use_bfbt)
+        {
+          // mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
+          mg_smoother_BCinvBT.initialize(mg_matrices_BCinvBT,smoother_data_BCinvBT);
+        }
+      else
+        {
+          mg_smoother_Schur.initialize(mg_matrices_Schur_complement, smoother_data_Schur);
+
+        }
     }
 
     // Estimate the eigenvalues for the Chebyshev smoothers.
@@ -1319,19 +1346,29 @@ namespace aspect
         VectorType temp_velocity;
         VectorType temp_pressure;
         mg_matrices_A_block[level].initialize_dof_vector(temp_velocity);
-        mg_matrices_Schur_complement[level].initialize_dof_vector(temp_pressure);
 
-        if(this->get_parameters().use_bfbt){
-        // mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
-        mg_matrices_BCinvBT[level].initialize_dof_vector(temp_pressure);
-        }
+        if (this->get_parameters().use_bfbt)
+          {
+            // mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
+            mg_matrices_BCinvBT[level].initialize_dof_vector(temp_pressure);
+          }
+        else
+          {
+            mg_matrices_Schur_complement[level].initialize_dof_vector(temp_pressure);
+
+          }
 
         mg_smoother_A[level].estimate_eigenvalues(temp_velocity);
-        mg_smoother_Schur[level].estimate_eigenvalues(temp_pressure);
-        if(this->get_parameters().use_bfbt){
-          // mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
-          mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
-        }
+        if (this->get_parameters().use_bfbt)
+          {
+            // mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
+            mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
+          }
+        else
+          {
+            mg_smoother_Schur[level].estimate_eigenvalues(temp_pressure);
+
+          }
 
         if (level==0)
           {
@@ -1349,23 +1386,27 @@ namespace aspect
 
     //Schur complement matrix GMG
     MGCoarseGridApplySmoother<VectorType> mg_coarse_Schur;
-    mg_coarse_Schur.initialize(mg_smoother_Schur);
 
 
     //Pressure laplace for diag BFBT GMG
     // MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
-    if(this->get_parameters().use_bfbt)
-      // mg_coarse_Laplace.initialize(mg_smoother_Laplace);
+    //if(this->get_parameters().use_bfbt)
+    // mg_coarse_Laplace.initialize(mg_smoother_Laplace);
 
     //Diag Bdiag(A)^{-1}B^T for diag A BFBT GMG
 
     MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
-    if(this->get_parameters().use_bfbt)
+    if (this->get_parameters().use_bfbt)
       mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
+    else
+      {
+        mg_coarse_Schur.initialize(mg_smoother_Schur);
+
+      }
 
     internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
     mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
-    
+
 
 
     if (print_details)
@@ -1392,13 +1433,10 @@ namespace aspect
 
     // Schur complement matrix GMG
     MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGSchurComplementMatrixType>> mg_interface_matrices_Schur;
-    mg_interface_matrices_Schur.resize(0, this->get_triangulation().n_global_levels()-1);
-    for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
-      mg_interface_matrices_Schur[level].initialize(mg_matrices_Schur_complement[level]);
-    mg::Matrix<VectorType> mg_interface_Schur(mg_interface_matrices_Schur);
+
 
     // Laplace for diag BFBT
-   
+
     // MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
     // if(this->get_parameters().use_bfbt){
 
@@ -1411,14 +1449,25 @@ namespace aspect
 
     // BCinvBT for diag BFBT
     MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGDiagonalBCinvBTType>> mg_interface_matrices_BCinvBT;
-    
-    if(this->get_parameters().use_bfbt){
 
-    mg_interface_matrices_BCinvBT.resize(0, this->get_triangulation().n_global_levels()-1);
-    for(unsigned int level= 0; level < this -> get_triangulation().n_global_levels(); ++level){
-      mg_interface_matrices_BCinvBT[level].initialize(mg_matrices_BCinvBT[level]);
-    }
-  }
+    if (this->get_parameters().use_bfbt)
+      {
+
+        mg_interface_matrices_BCinvBT.resize(0, this->get_triangulation().n_global_levels()-1);
+        for (unsigned int level= 0; level < this -> get_triangulation().n_global_levels(); ++level)
+          {
+            mg_interface_matrices_BCinvBT[level].initialize(mg_matrices_BCinvBT[level]);
+          }
+      }
+    else
+      {
+        mg_interface_matrices_Schur.resize(0, this->get_triangulation().n_global_levels()-1);
+        for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
+          mg_interface_matrices_Schur[level].initialize(mg_matrices_Schur_complement[level]);
+
+      }
+
+    mg::Matrix<VectorType> mg_interface_Schur(mg_interface_matrices_Schur);
 
     mg::Matrix<VectorType> mg_interface_BCinvBT(mg_interface_matrices_BCinvBT);
 
@@ -1453,14 +1502,14 @@ namespace aspect
                                      mg_smoother_Laplace);
     if(this->get_parameters().use_bfbt)
       mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
-*/
+    */
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
-    mg_coarse_BCinvBT_remove_ns,
-    mg_transfer_Schur_complement,
-    mg_smoother_BCinvBT_remove_ns,
-    mg_smoother_BCinvBT_remove_ns);
-    if(this->get_parameters().use_bfbt)
+                                     mg_coarse_BCinvBT_remove_ns,
+                                     mg_transfer_Schur_complement,
+                                     mg_smoother_BCinvBT_remove_ns,
+                                     mg_smoother_BCinvBT_remove_ns);
+    if (this->get_parameters().use_bfbt)
       mg_BCinvBT.set_edge_matrices(mg_interface_BCinvBT, mg_interface_BCinvBT);
 
 
@@ -1650,12 +1699,12 @@ namespace aspect
 
     using SchurApproximationType = internal::SchurApproximation<GMGPreconditioner, StokesMatrixType, SchurComplementMatrixType, VectorType>;
 
-    
+
     A_block_matrix.compute_diagonal();
     Schur_complement_block_matrix.compute_diagonal();
     if (this->get_parameters().use_bfbt)
       {
-        
+
 
 
 
@@ -2309,14 +2358,14 @@ namespace aspect
       Schur_complement_block_matrix.initialize(matrix_free, selected_dof_handler , selected_dof_handler);
     }
 
-    
+
     //Laplace block matrix
-    
+
     //{
     //  Laplace_block_matrix.clear();
     //  const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
     //  Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
-    //} 
+    //}
 
     // Create GMG matrices and constraints for each multigrid level
     {
@@ -2518,16 +2567,21 @@ namespace aspect
 
     for (unsigned int level=0; level < this->get_triangulation().n_global_levels(); ++level)
       {
-        mg_matrices_Schur_complement[level].compute_diagonal();
         mg_matrices_A_block[level].compute_diagonal();
-        if(this->get_parameters().use_bfbt){
-          // mg_matrices_Laplace[level].compute_diagonal();
-          const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
-          mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level], mg_matrices_BT_block[level],
-          level_diag_A_inv, level_cell_data[level]);
-          mg_matrices_BCinvBT[level].compute_diagonal();
+        if (this->get_parameters().use_bfbt)
+          {
+            // mg_matrices_Laplace[level].compute_diagonal();
+            const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
+            mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level], mg_matrices_BT_block[level],
+                                              level_diag_A_inv, level_cell_data[level]);
+            mg_matrices_BCinvBT[level].compute_diagonal();
 
-        }
+          }
+        else
+          {
+            mg_matrices_Schur_complement[level].compute_diagonal();
+
+          }
       }
 
     this->get_computing_timer().leave_subsection("Build Stokes preconditioner");

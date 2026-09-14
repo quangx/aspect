@@ -234,7 +234,7 @@ namespace aspect
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
       GMGLaplaceType Laplace_block_matrix;
-      
+
 
       DiagonalBCinvBTType bc_invbt;
       std::unique_ptr<dealii::PreconditionChebyshev<DiagonalBCinvBTType,dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> chebyshev_bc_invbt;

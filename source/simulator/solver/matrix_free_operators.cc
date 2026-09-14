@@ -1221,20 +1221,21 @@ namespace aspect
   //   diag_A_inv(diag_A_inv),
   //   cell_data(cell_data)
   // {}
-  
+
 
   template<int dim, int degree_v, class BOperatorType, class BTOperatorType, typename number>
 
   void MatrixFreeStokesOperators
   ::DiagonalBC_invBTOperator<dim, degree_v, BOperatorType, BTOperatorType, number>::set_up(
-                              const BOperatorType &B_operator,
-                              const BTOperatorType &BT_operator,
-                              const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-                             const OperatorCellData<dim, number> &cell_data
-  ){
+    const BOperatorType &B_operator,
+    const BTOperatorType &BT_operator,
+    const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+    const OperatorCellData<dim, number> &cell_data
+  )
+  {
     this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<BOperatorType,BTOperatorType>>(
-    B_operator, BT_operator, diag_A_inv);
-    
+                             B_operator, BT_operator, diag_A_inv);
+
     this->B_operator=&B_operator;
     this->diag_A_inv=&diag_A_inv;
     this->cell_data=&cell_data;
@@ -1386,8 +1387,8 @@ namespace aspect
 }
 
 // explicit instantiationsdealii.mak
-  namespace aspect
-  {
+namespace aspect
+{
 #define INSTANTIATE(dim) \
   template class MatrixFreeStokesOperators::ABlockOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::ABlockOperator<dim,3,GMGNumberType>; \
@@ -1409,8 +1410,8 @@ namespace aspect
                                                                      MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>, GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
 
-    ASPECT_INSTANTIATE(INSTANTIATE)
+  ASPECT_INSTANTIATE(INSTANTIATE)
 
 #undef INSTANTIATE
 
-  }
+}

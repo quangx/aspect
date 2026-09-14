@@ -665,9 +665,9 @@ namespace aspect
         //                          const OperatorCellData<dim, number> &cell_data);
         DiagonalBC_invBTOperator()=default;
         void set_up(const BOperatorType &B_operator,
-                  const BTOperatorType &BT_operator,
-                   const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
-                   const OperatorCellData<dim, number> &cell_data);
+                    const BTOperatorType &BT_operator,
+                    const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
+                    const OperatorCellData<dim, number> &cell_data);
         void compute_diagonal() override;
 
       private:
@@ -681,14 +681,15 @@ namespace aspect
     };
 
     template <typename VectorType>
-    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>{
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
+    {
       public:
-         void operator()(const unsigned int level,
-                                VectorType &dst,
-                               const VectorType &src) const override;
-         void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+        void operator()(const unsigned int level,
+                        VectorType &dst,
+                        const VectorType &src) const override;
+        void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
       private:
-          dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
+        dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
     };
   }
 
