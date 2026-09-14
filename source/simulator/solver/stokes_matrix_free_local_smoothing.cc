@@ -1491,7 +1491,6 @@ namespace aspect
                                    mg_transfer_Schur_complement,
                                    mg_smoother_Schur,
                                    mg_smoother_Schur);
-    mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
 
     //Diag-BFBT pressure Laplace GMG
     /*
@@ -1511,6 +1510,10 @@ namespace aspect
                                      mg_smoother_BCinvBT_remove_ns);
     if (this->get_parameters().use_bfbt)
       mg_BCinvBT.set_edge_matrices(mg_interface_BCinvBT, mg_interface_BCinvBT);
+    else{
+          mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
+
+    }
 
 
 
