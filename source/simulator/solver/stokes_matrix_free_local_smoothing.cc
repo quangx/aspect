@@ -222,14 +222,11 @@ namespace aspect
           //precondition with solve
           op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
           {
-            // PrimitiveVectorMemory<VectorType>  mp_mem;
-            // VectorType src_mean_zero=src;
-            // src_mean_zero.add(-src_mean_zero.mean_value());
-            // SolverControl solver_control(1000,src_mean_zero.l2_norm()*1e-6);
-            // SolverCG<VectorType> solver(solver_control,mp_mem);
-            // dst=0.0;
-            // solver.solve(mp_matrix,dst,src_mean_zero,mp_preconditioner);
-            // mp_preconditioner.vmult(dst,src);
+            
+            VectorType tmp;
+            tmp.reinit(src);
+            mp_preconditioner.vmult(tmp,src);
+            mp_preconditioner.vmult(dst,tmp);
             dst.add(-dst.mean_value());
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
@@ -1362,7 +1359,10 @@ namespace aspect
         if (this->get_parameters().use_bfbt)
           {
             // mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
-            mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
+            auto eigenvalue_info=mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
+            this->get_pcout()<<" level: "<<level<<" lambda_min: "<<
+            eigenvalue_info.min_eigenvalue_estimate<<", lambda_max:"
+            <<eigenvalue_info.max_eigenvalue_estimate<<" ]"<<std::endl;
           }
         else
           {
