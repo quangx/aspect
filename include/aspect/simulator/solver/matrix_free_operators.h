@@ -669,6 +669,12 @@ namespace aspect
                     const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
                     const OperatorCellData<dim, number> &cell_data);
         void compute_diagonal() override;
+        void assemble_sparse_matrix(
+
+          const dealii::AffineConstraints<double> &constraints_p,
+          const dealii::Mapping<dim> &mapping,
+          dealii::TrilinosWrappers::SparseMatrix &z 
+        ) const;
 
       private:
         void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
@@ -691,6 +697,10 @@ namespace aspect
       private:
         dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
     };
+
+
+
+
   }
 
 
