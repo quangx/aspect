@@ -27,6 +27,7 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
+#include <deal.II/base/exceptions.h>
 #include <deal.II/base/signaling_nan.h>
 
 #include <deal.II/base/symmetric_tensor.h>
@@ -35,6 +36,7 @@
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -1384,6 +1386,94 @@ namespace aspect
 
 
   }
+
+  template<int dim, int degree_v,  class BOperatorType, class BTOperatorType, typename number>
+
+  void MatrixFreeStokesOperators::DiagonalBC_invBTOperator
+  <dim, degree_v , BOperatorType, BTOperatorType, number>::
+  assemble_sparse_matrix(const dealii::AffineConstraints<double> &constraints_p,
+          const dealii::Mapping<dim> &mapping,
+          dealii::TrilinosWrappers::SparseMatrix &Z ) const
+  {
+    const auto &dof_handler_v=B_operator->get_matrix_free()->get_dof_handler(0);
+    const auto &dof_handler_p=B_operator->get_matrix_free()->get_dof_handler(1);
+    const dealii::FiniteElement<dim> &fe_v=dof_handler_v.get_fe();
+    const dealii::FiniteElement<dim> &fe_p=dof_handler_p.get_fe();
+    const dealii::QGauss<dim> quadrature(fe_v.degree+1);
+
+    dealii::FEValues<dim> fe_values_v(mapping, fe_v, quadrature, dealii::update_gradients| 
+      dealii::update_JxW_values);
+    
+    dealii::FEValues<dim> fe_values_p(mapping, fe_p, quadrature, dealii::update_values);
+
+    const dealii::FEValuesExtractors::Vector velocities(0);
+
+    const unsigned int n_v_dofs=fe_v.n_dofs_per_cell();
+    const unsigned int n_p_dofs=fe_p.n_dofs_per_cell();
+    const unsigned int n_q_points=quadrature.size();
+
+    dealii::FullMatrix<double> local_B(n_p_dofs,n_v_dofs);
+    dealii::FullMatrix<double> local_Z(n_p_dofs,n_p_dofs);
+
+    std::vector<double> local_diag_A_inv(n_v_dofs);
+    std::vector<dealii::types::global_dof_index> local_v_dof_indices(n_v_dofs);
+    std::vector<dealii::types::global_dof_index> local_p_dof_indices(n_p_dofs);
+
+    dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_dofs(),
+  dof_handler_p.get_triangulation().get_communicator());
+
+    dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, constraints_p);
+    sp.compress();
+    Z.reinit(sp);
+
+    auto cell_v=dof_handler_v.begin_active();
+    auto cell_p=dof_handler_p.begin_active();
+
+    while(cell_v !=dof_handler_v.end()){
+
+      if(cell_v -> is_locally_owned()){
+        fe_values_v.reinit(cell_v);
+        fe_values_p.reinit(cell_p);
+
+        cell_v->get_dof_indices(local_v_dof_indices);
+        cell_p->get_dof_indices(local_p_dof_indices);
+
+        for(unsigned int j=0;j<n_v_dofs;++j){
+          local_diag_A_inv[j]=(*diag_A_inv)(local_v_dof_indices[j]);
+        }
+
+        local_B = 0;
+        for(unsigned int q = 0; q<n_q_points;++q){
+          for(unsigned int k = 0;k<n_p_dofs;++k){
+            const double q_k=fe_values_p.shape_value(k,q);
+            for(unsigned int j=0;j<n_v_dofs;++j){
+              const double div_phi_j=fe_values_v[velocities].divergence(j,q);
+              local_B(k,j)+= -cell_data->pressure_scaling*q_k*div_phi_j*fe_values_v.JxW(q);
+            }
+          }
+        }
+        local_Z=0;
+        for(unsigned int i=0;i<n_p_dofs;++i){
+          for(unsigned int j=0;j<n_p_dofs;++j){
+            double sum=0.0;
+            for(unsigned int k=0;k<n_v_dofs;++k){
+              sum+=local_B(i,k)*local_diag_A_inv[k]*local_B(j,k);
+            }
+            local_Z(i,j) = sum;
+          }
+        }
+        constraints_p.distribute_local_to_global(local_Z,local_p_dof_indices,Z);
+
+      }
+      ++cell_v;
+      ++cell_p;
+    }
+    Z.compress(dealii::VectorOperation::add);
+
+
+
+  }
+
 }
 
 // explicit instantiationsdealii.mak

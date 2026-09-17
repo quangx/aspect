@@ -26,6 +26,7 @@
 #include <aspect/simulator/solver/interface.h>
 #include <aspect/simulator.h>
 
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -668,13 +669,17 @@ namespace aspect
                     const BTOperatorType &BT_operator,
                     const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
                     const OperatorCellData<dim, number> &cell_data);
+
         void compute_diagonal() override;
+
         void assemble_sparse_matrix(
 
           const dealii::AffineConstraints<double> &constraints_p,
           const dealii::Mapping<dim> &mapping,
-          dealii::TrilinosWrappers::SparseMatrix &z 
+          dealii::TrilinosWrappers::SparseMatrix &Z
         ) const;
+        
+        dealii::LinearAlgebra::distributed::Vector<double> compute_exact_diagonal(dealii::TrilinosWrappers::SparseMatrix &A) const;
 
       private:
         void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
