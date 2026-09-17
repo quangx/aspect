@@ -1292,7 +1292,7 @@ namespace aspect
     diagonal=0.0;
     
     dealii::TrilinosWrappers::SparseMatrix Z;
-    assemble_sparse_matrix(*constraints_p,*mapping,Z);
+    assemble_sparse_matrix(Z);
 
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
