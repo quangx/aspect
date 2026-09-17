@@ -28,6 +28,7 @@
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
 #include <deal.II/base/mg_level_object.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/matrix_free/matrix_free.h>
@@ -202,6 +203,8 @@ namespace aspect
       FESystem<dim> fe_v;
       FESystem<dim> fe_p;
       FESystem<dim> fe_projection;
+
+      std::vector<dealii::AffineConstraints<double>> level_constraints_p_stored;
 
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.

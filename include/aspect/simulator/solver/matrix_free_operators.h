@@ -668,14 +668,16 @@ namespace aspect
         void set_up(const BOperatorType &B_operator,
                     const BTOperatorType &BT_operator,
                     const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
-                    const OperatorCellData<dim, number> &cell_data);
+                    const OperatorCellData<dim, number> &cell_data,
+                    const dealii::AffineConstraints<double> &constraints_p,
+                    const dealii::Mapping<dim> &mapping
+                   );
 
         void compute_diagonal() override;
 
         void assemble_sparse_matrix(
 
-          const dealii::AffineConstraints<double> &constraints_p,
-          const dealii::Mapping<dim> &mapping,
+          
           dealii::TrilinosWrappers::SparseMatrix &Z
         ) const;
         
@@ -686,9 +688,10 @@ namespace aspect
                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
         std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BC_invBTOperator;
         const BOperatorType *B_operator=nullptr;
-        const BTOperatorType *BT_operator=nullptr;
         const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;
         const OperatorCellData<dim,number> *cell_data=nullptr;
+        const dealii::AffineConstraints<double> *constraints_p=nullptr;
+        const dealii::Mapping<dim> *mapping=nullptr;
     };
 
     template <typename VectorType>

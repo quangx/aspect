@@ -1232,7 +1232,9 @@ namespace aspect
     const BOperatorType &B_operator,
     const BTOperatorType &BT_operator,
     const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-    const OperatorCellData<dim, number> &cell_data
+    const OperatorCellData<dim, number> &cell_data,
+    const dealii::AffineConstraints<double> &constraints_p,
+    const dealii::Mapping<dim> &mapping
   )
   {
     this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<BOperatorType,BTOperatorType>>(
@@ -1241,6 +1243,11 @@ namespace aspect
     this->B_operator=&B_operator;
     this->diag_A_inv=&diag_A_inv;
     this->cell_data=&cell_data;
+    this->constraints_p=&constraints_p;
+    this->mapping=&mapping;
+    
+
+
 
   }
 
@@ -1283,96 +1290,21 @@ namespace aspect
       this->diagonal_entries->get_vector();
     B_matrix_free.initialize_dof_vector(diagonal,1);
     diagonal=0.0;
-    const unsigned int n_p_dofs_per_cell=B_matrix_free.get_dof_handler(1).get_fe().n_dofs_per_cell();
-    diag_A_inv->update_ghost_values();
-    for (unsigned int cell = 0; cell<B_matrix_free.n_cell_batches(); ++cell)
-      {
-        dealii::FEEvaluation<dim, degree_v, degree_v+1, dim, number> u_eval(B_matrix_free,0);
-        dealii::FEEvaluation<dim, degree_v-1, degree_v+1, 1, number> p_eval(B_matrix_free,1);
-        u_eval.reinit(cell);
-        p_eval.reinit(cell);
+    
+    dealii::TrilinosWrappers::SparseMatrix Z;
+    assemble_sparse_matrix(*constraints_p,*mapping,Z);
 
-        u_eval.read_dof_values(*diag_A_inv);
-        const unsigned int n_v_dofs=u_eval.dofs_per_cell;
+    const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
-        std::vector<dealii::VectorizedArray<number>> local_diag_A_inv(n_v_dofs);
-
-        for (unsigned int j=0; j<n_v_dofs; ++j)
-          {
-            local_diag_A_inv[j]=u_eval.begin_dof_values()[j];
-          }
-        for (unsigned int i=0; i<n_p_dofs_per_cell; ++i)
-          {
-            p_eval.begin_dof_values()[i]=dealii::make_vectorized_array(0.0);
-          }
-        for (unsigned int i=0; i<n_p_dofs_per_cell; ++i)
-          {
-            for (unsigned int j=0; j<n_p_dofs_per_cell; ++j)
-              {
-                if (i==j)
-                  {
-                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(1.0);
-                  }
-                else
-                  {
-                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
-                  }
-              }
-
-
-            p_eval.evaluate(dealii::EvaluationFlags::values);
-
-            //apply B^T operator to unit vector.
-
-            for (unsigned int q: u_eval.quadrature_point_indices())
-              {
-                const dealii::VectorizedArray<number> val_p=p_eval.get_value(q);
-                dealii::SymmetricTensor<2, dim, dealii::VectorizedArray<number>> velocity_terms;
-                for (unsigned int d=0; d<dim; ++d)
-                  {
-                    velocity_terms[d][d]-=cell_data->pressure_scaling*val_p;
-                  }
-                u_eval.submit_symmetric_gradient(velocity_terms,q);
-              }
-
-            u_eval.integrate(dealii::EvaluationFlags::gradients);
-
-            //scale by diag(A)^{-1}
-            for (unsigned int j=0; j<n_v_dofs; ++j)
-              {
-                u_eval.begin_dof_values()[j]*=local_diag_A_inv[j];
-              }
-
-            u_eval.evaluate(dealii::EvaluationFlags::gradients);
-            for (const unsigned int q: p_eval.quadrature_point_indices())
-              {
-                const auto sym_grad=u_eval.get_symmetric_gradient(q);
-                p_eval.submit_value(-cell_data->pressure_scaling*dealii::trace(sym_grad),q);
-
-              }
-            p_eval.integrate(dealii::EvaluationFlags::values);
-            const dealii::VectorizedArray<double> diag_i=p_eval.begin_dof_values()[i];
-
-            //zero out off diagonals
-            for (unsigned int j=0; j<n_p_dofs_per_cell; ++j)
-              {
-                if (i==j)
-                  {
-                    p_eval.begin_dof_values()[j]=diag_i;
-                  }
-                else
-                  {
-                    p_eval.begin_dof_values()[j]=dealii::make_vectorized_array(0.0);
-                  }
-              }
-            p_eval.distribute_local_to_global(diagonal);
-          }
-      }
+    for(const auto i: dof_handler_p.locally_owned_dofs()){
+      diagonal(i)=Z.diag_element(i);
+    }
 
 
 
 
-    diagonal.compress(dealii::VectorOperation::add);
+
+    diagonal.compress(dealii::VectorOperation::insert);
 
     this->set_constrained_entries_to_one(diagonal);
     inverse_diagonal=diagonal;
@@ -1391,8 +1323,7 @@ namespace aspect
 
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator
   <dim, degree_v , BOperatorType, BTOperatorType, number>::
-  assemble_sparse_matrix(const dealii::AffineConstraints<double> &constraints_p,
-          const dealii::Mapping<dim> &mapping,
+  assemble_sparse_matrix(
           dealii::TrilinosWrappers::SparseMatrix &Z ) const
   {
     const auto &dof_handler_v=B_operator->get_matrix_free()->get_dof_handler(0);
@@ -1401,10 +1332,10 @@ namespace aspect
     const dealii::FiniteElement<dim> &fe_p=dof_handler_p.get_fe();
     const dealii::QGauss<dim> quadrature(fe_v.degree+1);
 
-    dealii::FEValues<dim> fe_values_v(mapping, fe_v, quadrature, dealii::update_gradients| 
+    dealii::FEValues<dim> fe_values_v(*mapping, fe_v, quadrature, dealii::update_gradients| 
       dealii::update_JxW_values);
     
-    dealii::FEValues<dim> fe_values_p(mapping, fe_p, quadrature, dealii::update_values);
+    dealii::FEValues<dim> fe_values_p(*mapping, fe_p, quadrature, dealii::update_values);
 
     const dealii::FEValuesExtractors::Vector velocities(0);
 
@@ -1422,7 +1353,7 @@ namespace aspect
     dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_dofs(),
   dof_handler_p.get_triangulation().get_communicator());
 
-    dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, constraints_p);
+    dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
     sp.compress();
     Z.reinit(sp);
 
@@ -1462,7 +1393,7 @@ namespace aspect
             local_Z(i,j) = sum;
           }
         }
-        constraints_p.distribute_local_to_global(local_Z,local_p_dof_indices,Z);
+        constraints_p->distribute_local_to_global(local_Z,local_p_dof_indices,Z);
 
       }
       ++cell_v;

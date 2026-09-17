@@ -1718,7 +1718,7 @@ namespace aspect
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
 
-        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data);
+        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_p, this->get_mapping());
         bc_invbt.compute_diagonal();
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
@@ -2382,6 +2382,7 @@ namespace aspect
       // mg_matrices_Laplace.resize(0,n_levels-1);
       mg_matrices_BCinvBT.clear_elements();
       mg_matrices_BCinvBT.resize(0, n_levels-1);
+      level_constraints_p_stored.resize(n_levels);
 
 
       mg_matrices_B_block.clear_elements();
@@ -2392,7 +2393,6 @@ namespace aspect
       for (unsigned int level=0; level<n_levels; ++level)
         {
           AffineConstraints<double> level_constraints_v;
-          AffineConstraints<double> level_constraints_p;
           const Mapping<dim> &mapping = this->get_parameters().mesh_deformation_enabled
                                         ?
                                         this->get_mesh_deformation_handler().get_level_mapping(level)
@@ -2491,12 +2491,12 @@ namespace aspect
 #endif
 
 #if DEAL_II_VERSION_GTE(9,6,0)
-            level_constraints_p.reinit(dof_handler_p.locally_owned_mg_dofs(level), relevant_dofs);
+            level_constraints_p_stored[level].reinit(dof_handler_p.locally_owned_mg_dofs(level), relevant_dofs);
 #else
             level_constraints_p.reinit(relevant_dofs);
 #endif
 
-            level_constraints_p.close();
+            level_constraints_p_stored[level].close();
           }
 
           // set up MatrixFree objects for each multigrid level
@@ -2510,7 +2510,7 @@ namespace aspect
             additional_data.mg_level = level;
 
             std::vector<const DoFHandler<dim>*> stokes_dofs {&dof_handler_v, &dof_handler_p};
-            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v,&level_constraints_p};
+            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v,&level_constraints_p_stored[level]};
 
             matrix_free_level->reinit(mapping,
                                       stokes_dofs,
@@ -2575,8 +2575,11 @@ namespace aspect
           {
             // mg_matrices_Laplace[level].compute_diagonal();
             const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
-            mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level], mg_matrices_BT_block[level],
-                                              level_diag_A_inv, level_cell_data[level]);
+            mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level],
+                                              mg_matrices_BT_block[level], 
+                                              level_diag_A_inv, level_cell_data[level],
+                                            level_constraints_p_stored[level],
+                                          this->get_mapping());
             mg_matrices_BCinvBT[level].compute_diagonal();
 
           }
