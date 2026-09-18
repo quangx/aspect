@@ -340,7 +340,7 @@ namespace aspect
 
     template<typename VectorType>
     void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix){
-      solver_control=std::make_unique<dealii::SolverControl>(1e-10);
+      solver_control=std::make_unique<dealii::SolverControl>(1,1e-10);
       direct_solver=std::make_unique<dealii::TrilinosWrappers::SolverDirect>(*solver_control);
       direct_solver->initialize(coarse_matrix);
     }
