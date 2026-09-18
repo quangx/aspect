@@ -33,6 +33,9 @@
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/base/types.h>
+#include <deal.II/lac/solver_control.h>
+#include <deal.II/lac/trilinos_solver.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_matrix.h>
 #include <deal.II/multigrid/mg_smoother.h>
@@ -97,6 +100,8 @@ namespace aspect
     {
       this->coarse_grid_solver = &coarse_grid_solver;
     }
+
+
 
     template<class VectorType>
     struct Nullspace
@@ -325,6 +330,20 @@ namespace aspect
 
 
 
+  }
+  namespace MatrixFreeStokesOperators{
+      template<typename VectorType>
+    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::operator()(const unsigned int /*level*/,VectorType &dst, const VectorType &src) const{
+      direct_solver->solve(dst,src);
+      dst.add(-dst.mean_value());
+    }
+
+    template<typename VectorType>
+    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix){
+      solver_control=std::make_unique<dealii::SolverControl>(1e-10);
+      direct_solver=std::make_unique<dealii::TrilinosWrappers::SolverDirect>(*solver_control);
+      direct_solver->initialize(coarse_matrix);
+    }
   }
 
   template <int dim, int velocity_degree>
@@ -1397,16 +1416,21 @@ namespace aspect
     //Diag Bdiag(A)^{-1}B^T for diag A BFBT GMG
 
     MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
-    if (this->get_parameters().use_bfbt)
+    MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType> mg_coarse_BCinvBT_direct_solve;
+    dealii::TrilinosWrappers::SparseMatrix Z_coarse;
+    if (this->get_parameters().use_bfbt){
       mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
+      mg_matrices_BCinvBT[0].assemble_sparse_matrix(Z_coarse,0);
+      mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
+    }
     else
       {
         mg_coarse_Schur.initialize(mg_smoother_Schur);
 
       }
 
-    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
-    mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
+    // internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
+    // mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT_direct_solve);
 
 
 
@@ -1505,7 +1529,7 @@ namespace aspect
     */
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
-                                     mg_coarse_BCinvBT_remove_ns,
+                                     mg_coarse_BCinvBT_direct_solve,
                                      mg_transfer_Schur_complement,
                                      mg_smoother_BCinvBT_remove_ns,
                                      mg_smoother_BCinvBT_remove_ns);
