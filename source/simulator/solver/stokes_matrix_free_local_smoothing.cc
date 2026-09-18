@@ -32,6 +32,7 @@
 #include <cstdlib>
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
+#include <deal.II/base/types.h>
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_matrix.h>
 #include <deal.II/multigrid/mg_smoother.h>
@@ -1718,7 +1719,7 @@ namespace aspect
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
 
-        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_p, this->get_mapping());
+        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_p, this->get_mapping(), dealii::numbers::invalid_unsigned_int);
         bc_invbt.compute_diagonal();
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
@@ -2579,7 +2580,8 @@ namespace aspect
                                               mg_matrices_BT_block[level], 
                                               level_diag_A_inv, level_cell_data[level],
                                             level_constraints_p_stored[level],
-                                          this->get_mapping());
+                                          this->get_mapping(),
+                                        level);
             mg_matrices_BCinvBT[level].compute_diagonal();
 
           }

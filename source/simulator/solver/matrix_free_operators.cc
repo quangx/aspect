@@ -1238,7 +1238,8 @@ namespace aspect
     const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
     const OperatorCellData<dim, number> &cell_data,
     const dealii::AffineConstraints<double> &constraints_p,
-    const dealii::Mapping<dim> &mapping
+    const dealii::Mapping<dim> &mapping,
+    unsigned int level
   )
   {
     this->BC_invBTOperator=std::make_unique<internal::BC_invBT_Operator<BOperatorType,BTOperatorType>>(
@@ -1249,6 +1250,7 @@ namespace aspect
     this->cell_data=&cell_data;
     this->constraints_p=&constraints_p;
     this->mapping=&mapping;
+    this->level=level;
     
 
 
@@ -1296,12 +1298,15 @@ namespace aspect
     diagonal=0.0;
     
     dealii::TrilinosWrappers::SparseMatrix Z;
-    assemble_sparse_matrix(Z);
+    assemble_sparse_matrix(Z,this->level);
 
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
-    
-    for(const auto i: dof_handler_p.locally_owned_dofs()){
+    const bool level_grid=(this->level !=dealii::numbers::invalid_unsigned_int);
+    const dealii::IndexSet locally_owned_p=level_grid?
+    dof_handler_p.locally_owned_mg_dofs(this->level):
+    dof_handler_p.locally_owned_dofs();
+    for(const auto i: locally_owned_p){
       diagonal(i)=Z.diag_element(i);
     }
 
@@ -1330,7 +1335,7 @@ namespace aspect
   <dim, degree_v , BOperatorType, BTOperatorType, number>::
   assemble_sparse_matrix(
           dealii::TrilinosWrappers::SparseMatrix &Z,
-        const unsigned int level = dealii::numbers::invalid_unsigned_int) const
+         unsigned int level) const
   {
     const bool level_grid=(level!=dealii::numbers::invalid_unsigned_int);
     const auto &dof_handler_v=B_operator->get_matrix_free()->get_dof_handler(0);

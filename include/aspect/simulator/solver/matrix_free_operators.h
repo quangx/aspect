@@ -670,7 +670,8 @@ namespace aspect
                     const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
                     const OperatorCellData<dim, number> &cell_data,
                     const dealii::AffineConstraints<double> &constraints_p,
-                    const dealii::Mapping<dim> &mapping
+                    const dealii::Mapping<dim> &mapping,
+                    unsigned int level
                    );
 
         void compute_diagonal() override;
@@ -678,7 +679,8 @@ namespace aspect
         void assemble_sparse_matrix(
 
           
-          dealii::TrilinosWrappers::SparseMatrix &Z
+          dealii::TrilinosWrappers::SparseMatrix &Z,
+          unsigned int level
         ) const;
         
         dealii::LinearAlgebra::distributed::Vector<double> compute_exact_diagonal(dealii::TrilinosWrappers::SparseMatrix &A) const;
@@ -692,6 +694,7 @@ namespace aspect
         const OperatorCellData<dim,number> *cell_data=nullptr;
         const dealii::AffineConstraints<double> *constraints_p=nullptr;
         const dealii::Mapping<dim> *mapping=nullptr;
+        unsigned int level=dealii::numbers::invalid_unsigned_int;
     };
 
     template <typename VectorType>
