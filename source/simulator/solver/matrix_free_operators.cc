@@ -28,9 +28,11 @@
 #include <aspect/newton.h>
 
 #include <deal.II/base/exceptions.h>
+#include <deal.II/base/index_set.h>
 #include <deal.II/base/signaling_nan.h>
 
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/types.h>
 #include <deal.II/base/vectorization.h>
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -38,8 +40,10 @@
 
 #include <deal.II/fe/fe_update_flags.h>
 #include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/trilinos_sparsity_pattern.h>
 #include <deal.II/lac/vector_operation.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
+#include <deal.II/multigrid/mg_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
 #include <deal.II/fe/fe_q.h>
@@ -1296,6 +1300,7 @@ namespace aspect
 
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
+    
     for(const auto i: dof_handler_p.locally_owned_dofs()){
       diagonal(i)=Z.diag_element(i);
     }
@@ -1324,8 +1329,10 @@ namespace aspect
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator
   <dim, degree_v , BOperatorType, BTOperatorType, number>::
   assemble_sparse_matrix(
-          dealii::TrilinosWrappers::SparseMatrix &Z ) const
+          dealii::TrilinosWrappers::SparseMatrix &Z,
+        const unsigned int level = dealii::numbers::invalid_unsigned_int) const
   {
+    const bool level_grid=(level!=dealii::numbers::invalid_unsigned_int);
     const auto &dof_handler_v=B_operator->get_matrix_free()->get_dof_handler(0);
     const auto &dof_handler_p=B_operator->get_matrix_free()->get_dof_handler(1);
     const dealii::FiniteElement<dim> &fe_v=dof_handler_v.get_fe();
@@ -1350,27 +1357,67 @@ namespace aspect
     std::vector<dealii::types::global_dof_index> local_v_dof_indices(n_v_dofs);
     std::vector<dealii::types::global_dof_index> local_p_dof_indices(n_p_dofs);
 
-    dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_dofs(),
+    // construct different index sets depending on whether or not we are
+    // on a mg level.
+
+    const dealii::IndexSet locally_owned_p= level_grid?
+    dof_handler_p.locally_owned_mg_dofs(level):dof_handler_p.locally_owned_dofs();
+
+    const dealii::IndexSet locally_owned_v=level_grid ?
+    dof_handler_v.locally_owned_mg_dofs(level):dof_handler_v.locally_owned_dofs();
+
+    dealii::IndexSet locally_relevant_v;
+    level_grid?(dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler_v,level,locally_relevant_v))
+    :(dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_v,locally_relevant_v));
+
+    
+
+    dealii::TrilinosWrappers::SparsityPattern sp(locally_owned_p,
   dof_handler_p.get_triangulation().get_communicator());
 
-    dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
+   level_grid?dealii::MGTools::make_sparsity_pattern(dof_handler_p, sp, level,*constraints_p):
+dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
+
+  
+
     sp.compress();
     Z.reinit(sp);
 
-    auto cell_v=dof_handler_v.begin_active();
-    auto cell_p=dof_handler_p.begin_active();
+    auto cell_v=level_grid?dof_handler_v.begin(level):dof_handler_v.begin_active();
+    auto cell_p=level_grid?dof_handler_p.begin(level):dof_handler_p.begin_active();
+    auto end_v=level_grid?dof_handler_v.end(level):dof_handler_v.end();
 
-    while(cell_v !=dof_handler_v.end()){
+    // copy diag_A_inv into a vector with proper ghost 
+    // value distribution.
+    
+    
+    dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_ghost;
+    diag_A_inv_ghost.reinit(locally_owned_v,
+    locally_relevant_v,
+  dof_handler_v.get_triangulation().get_communicator());
+    diag_A_inv_ghost.copy_locally_owned_data_from(*diag_A_inv);
+    diag_A_inv_ghost.update_ghost_values();
 
-      if(cell_v -> is_locally_owned()){
+    while(cell_v !=end_v){
+
+      const bool locally_owned=level_grid?
+      (cell_v->level_subdomain_id()==dof_handler_v.get_triangulation().locally_owned_subdomain()):
+      cell_v->is_locally_owned();
+      if(locally_owned){
         fe_values_v.reinit(cell_v);
         fe_values_p.reinit(cell_p);
 
+        if(level_grid){
+          cell_v->get_mg_dof_indices(local_v_dof_indices);
+          cell_p->get_mg_dof_indices(local_p_dof_indices);
+        }
+        else{
         cell_v->get_dof_indices(local_v_dof_indices);
         cell_p->get_dof_indices(local_p_dof_indices);
+        }
 
         for(unsigned int j=0;j<n_v_dofs;++j){
-          local_diag_A_inv[j]=(*diag_A_inv)(local_v_dof_indices[j]);
+          local_diag_A_inv[j]=(diag_A_inv_ghost)(local_v_dof_indices[j]);
         }
 
         local_B = 0;
