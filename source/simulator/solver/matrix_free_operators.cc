@@ -1282,6 +1282,7 @@ namespace aspect
   void MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, degree_v,BOperatorType,  BTOperatorType, number>
   ::compute_diagonal()
   {
+
     const auto &B_matrix_free=*B_operator->get_matrix_free();
     this->initialize(B_operator->get_matrix_free(),std::vector< unsigned int > {1},std::vector< unsigned int > {1});
 
@@ -1302,7 +1303,9 @@ namespace aspect
 
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
-    const bool level_grid=(this->level !=dealii::numbers::invalid_unsigned_int);
+    const bool level_grid=(level !=dealii::numbers::invalid_unsigned_int);
+    std::cerr.flush();
+    
     const dealii::IndexSet locally_owned_p=level_grid?
     dof_handler_p.locally_owned_mg_dofs(this->level):
     dof_handler_p.locally_owned_dofs();
@@ -1337,7 +1340,9 @@ namespace aspect
           dealii::TrilinosWrappers::SparseMatrix &Z,
          unsigned int level) const
   {
+     
     const bool level_grid=(level!=dealii::numbers::invalid_unsigned_int);
+    
     const auto &dof_handler_v=B_operator->get_matrix_free()->get_dof_handler(0);
     const auto &dof_handler_p=B_operator->get_matrix_free()->get_dof_handler(1);
     const dealii::FiniteElement<dim> &fe_v=dof_handler_v.get_fe();
@@ -1388,9 +1393,9 @@ dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
     sp.compress();
     Z.reinit(sp);
 
-    auto cell_v=level_grid?dof_handler_v.begin(level):dof_handler_v.begin_active();
-    auto cell_p=level_grid?dof_handler_p.begin(level):dof_handler_p.begin_active();
-    auto end_v=level_grid?dof_handler_v.end(level):dof_handler_v.end();
+   
+
+    
 
     // copy diag_A_inv into a vector with proper ghost 
     // value distribution.
@@ -1403,11 +1408,9 @@ dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
     diag_A_inv_ghost.copy_locally_owned_data_from(*diag_A_inv);
     diag_A_inv_ghost.update_ghost_values();
 
-    while(cell_v !=end_v){
+    auto process_cell=[&](const auto &cell_v,const auto &cell_p,bool locally_owned){
 
-      const bool locally_owned=level_grid?
-      (cell_v->level_subdomain_id()==dof_handler_v.get_triangulation().locally_owned_subdomain()):
-      cell_v->is_locally_owned();
+      
       if(locally_owned){
         fe_values_v.reinit(cell_v);
         fe_values_p.reinit(cell_p);
@@ -1448,8 +1451,30 @@ dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
         constraints_p->distribute_local_to_global(local_Z,local_p_dof_indices,Z);
 
       }
-      ++cell_v;
-      ++cell_p;
+      
+    };
+    if(level_grid){
+      auto cell_v=dof_handler_v.begin(level);
+      auto cell_p=dof_handler_p.begin(level);
+      auto end_v=dof_handler_v.end(level);
+      while(cell_v!=end_v){
+          const bool locally_owned=cell_v->level_subdomain_id()==dof_handler_v.get_triangulation().locally_owned_subdomain();
+          process_cell(cell_v,cell_p,locally_owned);
+          ++cell_v;
+          ++cell_p;
+
+      }
+    }
+    else{
+      auto cell_v=dof_handler_v.begin_active();
+      auto cell_p=dof_handler_p.begin_active();
+      auto end_v=dof_handler_v.end();
+      while(cell_v!=end_v){
+        const bool locally_owned=cell_v->is_locally_owned();
+        process_cell(cell_v,cell_p,locally_owned);
+        ++cell_v;
+        ++cell_p;
+      }
     }
     Z.compress(dealii::VectorOperation::add);
 

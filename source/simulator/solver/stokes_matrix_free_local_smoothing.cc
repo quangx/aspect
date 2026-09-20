@@ -51,6 +51,7 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_renumbering.h>
+#include <ostream>
 
 namespace aspect
 {
