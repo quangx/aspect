@@ -1298,20 +1298,43 @@ namespace aspect
     B_matrix_free.initialize_dof_vector(diagonal,1);
     diagonal=0.0;
     
-    dealii::TrilinosWrappers::SparseMatrix Z;
-    assemble_sparse_matrix(Z,this->level);
+    dealii::TrilinosWrappers::SparseMatrix B;
+    assemble_sparse_matrix(B,this->level);
 
+    const auto &dof_handler_v=B_matrix_free.get_dof_handler(0);
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
 
-    const bool level_grid=(level !=dealii::numbers::invalid_unsigned_int);
-    std::cerr.flush();
-    
+    const bool level_grid=(this->level!=dealii::numbers::invalid_unsigned_int);
+
+    const dealii::IndexSet locally_owned_v=level_grid?
+    dof_handler_v.locally_owned_mg_dofs(this->level):dof_handler_v.locally_owned_dofs();
+
     const dealii::IndexSet locally_owned_p=level_grid?
-    dof_handler_p.locally_owned_mg_dofs(this->level):
-    dof_handler_p.locally_owned_dofs();
-    for(const auto i: locally_owned_p){
-      diagonal(i)=Z.diag_element(i);
+    dof_handler_p.locally_owned_mg_dofs(this->level):dof_handler_p.locally_owned_dofs();
+
+    dealii::IndexSet locally_relevant_v;
+    if(level_grid){
+      dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler_v,this->level,locally_relevant_v);
     }
+    else{
+      dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_v,locally_relevant_v);
+    }
+
+    dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_ghost;
+    diag_A_inv_ghost.reinit(locally_owned_v, locally_relevant_v,
+      dof_handler_v.get_triangulation().get_communicator());
+    diag_A_inv_ghost.copy_locally_owned_data_from(*diag_A_inv);
+    diag_A_inv_ghost.update_ghost_values();
+
+    for(const auto i:locally_owned_p){
+      double diag_i=0.0;
+      for(auto b=B.begin(i); b!=B.end(i);++b){
+        diag_i+=b->value()*b->value()*diag_A_inv_ghost(b->column());
+      }
+      diagonal(i)=diag_i;
+    }
+
+    
 
 
 

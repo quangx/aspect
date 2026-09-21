@@ -1418,11 +1418,9 @@ namespace aspect
 
     MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
     MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType> mg_coarse_BCinvBT_direct_solve;
-    dealii::TrilinosWrappers::SparseMatrix Z_coarse;
     if (this->get_parameters().use_bfbt){
       mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
-      mg_matrices_BCinvBT[0].assemble_sparse_matrix(Z_coarse,0);
-      mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
+      
     }
     else
       {
@@ -1430,8 +1428,8 @@ namespace aspect
 
       }
 
-    // internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
-    // mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT_direct_solve);
+    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
+    mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
 
 
 
@@ -1530,7 +1528,7 @@ namespace aspect
     */
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
-                                     mg_coarse_BCinvBT_direct_solve,
+                                     mg_coarse_BCinvBT_remove_ns,
                                      mg_transfer_Schur_complement,
                                      mg_smoother_BCinvBT_remove_ns,
                                      mg_smoother_BCinvBT_remove_ns);

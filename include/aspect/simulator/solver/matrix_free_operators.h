@@ -681,7 +681,7 @@ namespace aspect
         void assemble_sparse_matrix(
 
           
-          dealii::TrilinosWrappers::SparseMatrix &Z,
+          dealii::TrilinosWrappers::SparseMatrix &B,
           unsigned int level
         ) const;
         
