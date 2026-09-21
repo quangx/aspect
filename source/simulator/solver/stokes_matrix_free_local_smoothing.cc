@@ -1742,7 +1742,7 @@ namespace aspect
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
 
-        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_p, this->get_mapping(), dealii::numbers::invalid_unsigned_int);
+        bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_v, constraints_p, this->get_mapping(), dealii::numbers::invalid_unsigned_int);
         bc_invbt.compute_diagonal();
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
@@ -2278,6 +2278,7 @@ namespace aspect
       constraints_p.close();
     }
 
+
     // Coefficient transfer objects
     {
       dof_handler_projection.clear();
@@ -2407,6 +2408,7 @@ namespace aspect
       mg_matrices_BCinvBT.clear_elements();
       mg_matrices_BCinvBT.resize(0, n_levels-1);
       level_constraints_p_stored.resize(n_levels);
+      level_constraints_v_stored.resize(n_levels);
 
 
       mg_matrices_B_block.clear_elements();
@@ -2432,14 +2434,14 @@ namespace aspect
 #endif
 
 #if DEAL_II_VERSION_GTE(9,6,0)
-            level_constraints_v.reinit(dof_handler_v.locally_owned_mg_dofs(level), relevant_dofs);
+            level_constraints_v_stored[level].reinit(dof_handler_v.locally_owned_mg_dofs(level), relevant_dofs);
             for (const auto index : mg_constrained_dofs_A_block.get_boundary_indices(level))
-              level_constraints_v.constrain_dof_to_zero(index);
+              level_constraints_v_stored[level].constrain_dof_to_zero(index);
 #else
             level_constraints_v.reinit(relevant_dofs);
             level_constraints_v.add_lines(mg_constrained_dofs_A_block.get_boundary_indices(level));
 #endif
-            level_constraints_v.close();
+            level_constraints_v_stored[level].close();
 
             const std::set<types::boundary_id> &no_flux_boundaries
               = this->get_boundary_velocity_manager().get_tangential_boundary_velocity_indicators();
@@ -2502,8 +2504,8 @@ namespace aspect
                                                                  user_level_constraints);
 
                 // let Dirichlet values win over no normal flux:
-                level_constraints_v.merge(user_level_constraints, AffineConstraints<double>::left_object_wins);
-                level_constraints_v.close();
+                level_constraints_v_stored[level].merge(user_level_constraints, AffineConstraints<double>::left_object_wins);
+                level_constraints_v_stored[level].close();
               }
           }
           {
@@ -2534,7 +2536,8 @@ namespace aspect
             additional_data.mg_level = level;
 
             std::vector<const DoFHandler<dim>*> stokes_dofs {&dof_handler_v, &dof_handler_p};
-            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v,&level_constraints_p_stored[level]};
+            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v_stored[level],
+            &level_constraints_p_stored[level]};
 
             matrix_free_level->reinit(mapping,
                                       stokes_dofs,
@@ -2602,7 +2605,9 @@ namespace aspect
             mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level],
                                               mg_matrices_BT_block[level], 
                                               level_diag_A_inv, level_cell_data[level],
+                                            level_constraints_v_stored[level],
                                             level_constraints_p_stored[level],
+                                            
                                           this->get_mapping(),
                                         level);
             mg_matrices_BCinvBT[level].compute_diagonal();

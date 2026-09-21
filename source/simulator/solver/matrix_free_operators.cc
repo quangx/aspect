@@ -798,6 +798,7 @@ namespace aspect
     },
     1 /* dofhandler */);
 
+
     this->set_constrained_entries_to_one(diagonal);
     inverse_diagonal = diagonal;
 
@@ -1237,7 +1238,9 @@ namespace aspect
     const BTOperatorType &BT_operator,
     const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
     const OperatorCellData<dim, number> &cell_data,
+    const dealii::AffineConstraints<double> &constraints_v,
     const dealii::AffineConstraints<double> &constraints_p,
+    
     const dealii::Mapping<dim> &mapping,
     unsigned int level
   )
@@ -1249,6 +1252,7 @@ namespace aspect
     this->diag_A_inv=&diag_A_inv;
     this->cell_data=&cell_data;
     this->constraints_p=&constraints_p;
+    this->constraints_v=&constraints_v;
     this->mapping=&mapping;
     this->level=level;
     
@@ -1420,11 +1424,7 @@ namespace aspect
           cell_v->get_dof_indices(local_v_dof_indices);
           cell_p->get_dof_indices(local_p_dof_indices);
         }
-        for(unsigned int i=0;i<n_p_dofs;++i){
-          for(unsigned int j=0;j<n_v_dofs;++j){
-            sp.add(local_p_dof_indices[i],local_v_dof_indices[j]);
-          }
-        }
+        constraints_p->add_entries_local_to_global(local_p_dof_indices,*constraints_v,local_v_dof_indices,sp);
       }
     };
       if(level_grid){
@@ -1492,11 +1492,8 @@ namespace aspect
             }
           }
         }
-        for(unsigned i=0;i<n_p_dofs;++i){
-        for(unsigned int j=0;j<n_v_dofs;++j){
-          B.add(local_p_dof_indices[i],local_v_dof_indices[j],local_B(i,j));
-        }
-      }
+        constraints_p->distribute_local_to_global(local_B,local_p_dof_indices,
+        *constraints_v,local_v_dof_indices,B);
         
 
       }

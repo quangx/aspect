@@ -26,6 +26,7 @@
 #include <aspect/simulator/solver/interface.h>
 #include <aspect/simulator.h>
 
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/solver_control.h>
 #include <deal.II/lac/trilinos_solver.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
@@ -671,7 +672,9 @@ namespace aspect
                     const BTOperatorType &BT_operator,
                     const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
                     const OperatorCellData<dim, number> &cell_data,
+                    const dealii::AffineConstraints<double> &constraints_v,
                     const dealii::AffineConstraints<double> &constraints_p,
+                    
                     const dealii::Mapping<dim> &mapping,
                     unsigned int level
                    );
@@ -695,6 +698,7 @@ namespace aspect
         const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;
         const OperatorCellData<dim,number> *cell_data=nullptr;
         const dealii::AffineConstraints<double> *constraints_p=nullptr;
+        const dealii::AffineConstraints<double> *constraints_v=nullptr;
         const dealii::Mapping<dim> *mapping=nullptr;
         unsigned int level=dealii::numbers::invalid_unsigned_int;
     };
