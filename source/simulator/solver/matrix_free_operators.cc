@@ -27,6 +27,7 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
+#include <deal.II/base/exception_macros.h>
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/signaling_nan.h>
@@ -1305,16 +1306,26 @@ namespace aspect
     dealii::TrilinosWrappers::SparseMatrix B;
     assemble_sparse_matrix(B,this->level);
 
+    
+
+
     const auto &dof_handler_v=B_matrix_free.get_dof_handler(0);
     const auto &dof_handler_p=B_matrix_free.get_dof_handler(1);
+    
+
+     
+    
 
     const bool level_grid=(this->level!=dealii::numbers::invalid_unsigned_int);
+    
+    
 
     const dealii::IndexSet locally_owned_v=level_grid?
     dof_handler_v.locally_owned_mg_dofs(this->level):dof_handler_v.locally_owned_dofs();
 
     const dealii::IndexSet locally_owned_p=level_grid?
     dof_handler_p.locally_owned_mg_dofs(this->level):dof_handler_p.locally_owned_dofs();
+    
 
     dealii::IndexSet locally_relevant_v;
     if(level_grid){
@@ -1323,6 +1334,7 @@ namespace aspect
     else{
       dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_v,locally_relevant_v);
     }
+    
 
     dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_ghost;
     diag_A_inv_ghost.reinit(locally_owned_v, locally_relevant_v,
@@ -1330,14 +1342,86 @@ namespace aspect
     diag_A_inv_ghost.copy_locally_owned_data_from(*diag_A_inv);
     diag_A_inv_ghost.update_ghost_values();
 
-    for(const auto i:locally_owned_p){
+     unsigned int n_missing=0;
+     for(const auto i:locally_owned_p){
       double diag_i=0.0;
-      for(auto b=B.begin(i); b!=B.end(i);++b){
-        diag_i+=b->value()*b->value()*diag_A_inv_ghost(b->column());
+     for(auto b=B.begin(i); b!=B.end(i);++b){
+        if(locally_relevant_v.is_element(b->column()))
+          diag_i+=b->value()*b->value()*diag_A_inv_ghost(b->column());
+        else if(b->value()!=0){
+          ++n_missing;
+        }
       }
       diagonal(i)=diag_i;
     }
+    AssertThrow(n_missing==0, dealii::ExcMessage("B has nonzero entreis outside ghost"));
 
+    // DEBUG ONLY: compare stored diagonal against the exact diagonal, probing one
+// global index at a time. Every rank calls vmult the same number of times
+// (vmult is collective), but only one rank sets a unit entry per iteration.
+
+/*
+{
+  const auto comm = dof_handler_p.get_triangulation().get_communicator();
+  const unsigned int my_rank = dealii::Utilities::MPI::this_mpi_process(comm);
+
+  std::vector<dealii::types::global_dof_index> my_indices;
+  for (const auto i : locally_owned_p)
+    if (!constraints_p->is_constrained(i))
+      my_indices.push_back(i);
+
+  const std::vector<unsigned int> counts =
+    dealii::Utilities::MPI::all_gather(comm, static_cast<unsigned int>(my_indices.size()));
+
+  dealii::LinearAlgebra::distributed::Vector<number> e, Me;
+  e.reinit(diagonal);
+  Me.reinit(diagonal);
+
+  double max_error = 0.0, max_reference = 0.0;
+  double worst_stored = 0.0, worst_reference = 0.0;
+  dealii::types::global_dof_index worst_i = 0;
+  unsigned int checked = 0;
+
+  for (unsigned int r = 0; r < counts.size(); ++r)
+    for (unsigned int n = 0; n < counts[r]; ++n)
+      {
+        e = 0.0;
+        if (my_rank == r)
+          e(my_indices[n]) = 1.0;
+        e.compress(dealii::VectorOperation::insert);   // collective
+        Me = 0.0;
+        this->vmult(Me, e);                            // collective
+
+        if (my_rank == r)
+          {
+            const auto i = my_indices[n];
+            const double reference = Me(i);
+            const double stored = diagonal(i);
+            const double error = std::abs(stored - reference);
+            if (checked == 0 || error > max_error)
+              {
+                worst_i = i;
+                worst_stored = stored;
+                worst_reference = reference;
+                max_error = error;
+              }
+            max_reference = std::max(max_reference, std::abs(reference));
+            ++checked;
+          }
+      }
+
+  if (checked > 0)
+    std::cerr << "rank " << my_rank << " diagonal check level="
+              << (level_grid ? std::to_string(this->level) : std::string("active"))
+              << ": " << checked << " entries, worst index " << worst_i
+              << " stored=" << worst_stored << " ref=" << worst_reference
+              << " max rel err=" << max_error / max_reference << std::endl;
+}*/
+   
+
+    
+   
+   
     
 
 
@@ -1345,6 +1429,7 @@ namespace aspect
 
 
     diagonal.compress(dealii::VectorOperation::insert);
+    
 
     this->set_constrained_entries_to_one(diagonal);
     inverse_diagonal=diagonal;
@@ -1401,15 +1486,24 @@ namespace aspect
     const dealii::IndexSet locally_owned_v=level_grid ?
     dof_handler_v.locally_owned_mg_dofs(level):dof_handler_v.locally_owned_dofs();
 
+    dealii::IndexSet dof_set;
+    if(level_grid){
+      dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler_p,
+      level,
+       dof_set);
+    }
     
+    else{
+      dealii::DoFTools::extract_locally_relevant_dofs(dof_handler_p,
+      dof_set);
+    }
 
     
 
     dealii::TrilinosWrappers::SparsityPattern sp(locally_owned_p,locally_owned_v,
+      dof_set,
   dof_handler_p.get_triangulation().get_communicator());
 
-   //level_grid?dealii::MGTools::make_sparsity_pattern(dof_handler_p, sp, level,*constraints_p):
-//dealii::DoFTools::make_sparsity_pattern(dof_handler_p, sp, *constraints_p);
 
   
 
@@ -1458,8 +1552,6 @@ namespace aspect
 
     
 
-    // copy diag_A_inv into a vector with proper ghost 
-    // value distribution.
     
     
   
