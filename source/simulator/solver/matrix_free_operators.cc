@@ -27,7 +27,6 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
-#include <deal.II/base/exception_macros.h>
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/signaling_nan.h>
