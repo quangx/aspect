@@ -1737,6 +1737,7 @@ namespace aspect
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
+          
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
@@ -1978,11 +1979,11 @@ namespace aspect
         // instead of requiring FGMRES, greatly lowing the memory requirement of the solver.
         if (this->get_parameters().stokes_krylov_type == Parameters<dim>::StokesKrylovType::gmres)
           {
-            SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
+            SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   SolverFMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
-                                  ,true));
+                                  /*,true)*/));
 
             solver.solve (stokes_matrix,
                           solution_copy,
