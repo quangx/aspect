@@ -1981,7 +1981,7 @@ namespace aspect
           {
             SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>
             solver(solver_control_cheap, mem,
-                   SolverFMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
+                   SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
                                   /*,true)*/));
 
