@@ -142,7 +142,7 @@ namespace aspect
       // Either solve with the top left block
       // or just apply one preconditioner sweep (for the first few
       // iterations of our two-stage outer GMRES iteration)
-      if (do_solve_A == true || do_solve_A == false)
+      if (do_solve_A == true) 
         {
           SolverControl solver_control(10000, src.l2_norm() * solver_tolerance);
           PrimitiveVectorMemory<VectorType> mem;
@@ -153,26 +153,30 @@ namespace aspect
 
               if (A_block_is_symmetric)
                 {
-                  // SolverCG<VectorType> solver(solver_control, mem);
-                  // solver.solve(matrix, dst, src, preconditioner);
+                  SolverCG<VectorType> solver(solver_control, mem);
+                  solver.solve(matrix, dst, src, preconditioner);
+                  std::cerr<<"cg call: "<<solver_control.last_step()
+                  <<"iterations, "<<(solver_control.last_check()
+                ==SolverControl::success? "success":"FAILED")<<
+                std::endl;
 
                   //DEBUG - test multiple v cycles for A
-                  for(unsigned int i=0;i<2;++i){
-                    VectorType residual = src;
-                    VectorType tmp;
-                    tmp.reinit(src);
-                    tmp=0.0;
-                    matrix.vmult(tmp,dst);
-                    residual-=tmp;
-                    VectorType corrected;
-                    corrected.reinit(dst);
-                    preconditioner.vmult(corrected,residual);
-                    dst+=corrected;
+                  // for(unsigned int i=0;i<4;++i){
+                  //   VectorType residual = src;
+                  //   VectorType tmp;
+                  //   tmp.reinit(src);
+                  //   tmp=0.0;
+                  //   matrix.vmult(tmp,dst);
+                  //   residual-=tmp;
+                  //   VectorType corrected;
+                  //   corrected.reinit(dst);
+                  //   preconditioner.vmult(corrected,residual);
+                  //   dst+=corrected;
 
 
 
 
-                  }
+                  // }
                 }
               else
                 {
@@ -202,6 +206,7 @@ namespace aspect
         }
       else
         {
+          dst=0.0;
           preconditioner.vmult (dst, src);
           n_iterations_ += 1;
         }

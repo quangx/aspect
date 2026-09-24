@@ -29,6 +29,7 @@
 #include <aspect/melt.h>
 #include <aspect/newton.h>
 
+#include <boost/operators.hpp>
 #include <cstdlib>
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
@@ -1693,7 +1694,7 @@ namespace aspect
     SolverControl solver_control_cheap (this->get_parameters().n_cheap_stokes_solver_steps,
                                         solver_tolerance, true);
     SolverControl solver_control_expensive (this->get_parameters().n_expensive_stokes_solver_steps,
-                                            solver_tolerance);
+                                            solver_tolerance,true);
 
     solver_control_cheap.enable_history_data();
     solver_control_expensive.enable_history_data();
@@ -1983,7 +1984,7 @@ namespace aspect
             solver(solver_control_cheap, mem,
                    SolverGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
-                                  ,true));
+                                  , true));
 
             solver.solve (stokes_matrix,
                           solution_copy,
