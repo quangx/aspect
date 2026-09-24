@@ -155,11 +155,7 @@ namespace aspect
                 {
                   SolverCG<VectorType> solver(solver_control, mem);
                   solver.solve(matrix, dst, src, preconditioner);
-                  std::cerr<<"cg call: "<<solver_control.last_step()
-                  <<"iterations, "<<(solver_control.last_check()
-                ==SolverControl::success? "success":"FAILED")<<
-                std::endl;
-
+                 
                   //DEBUG - test multiple v cycles for A
                   // for(unsigned int i=0;i<4;++i){
                   //   VectorType residual = src;
