@@ -695,10 +695,29 @@ namespace aspect
 
     transfer.build(dof_handler_projection);
 
+    // DEBUG pass in reciprocal for harmonically averaged viscosity
+
+    dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_reciprocal(active_viscosity_vector);
+
+    for (unsigned int i =0; i< active_viscosity_reciprocal.locally_owned_size();
+        ++i){
+        active_viscosity_reciprocal.local_element(i) = 1.0/active_viscosity_reciprocal.local_element(i);
+     }
     transfer.interpolate_to_mg(dof_handler_projection,
                                level_viscosity_vector,
-                               active_viscosity_vector);
+                               active_viscosity_reciprocal);
 
+
+  //DEBUG invert reciprocal back to standard value.
+
+    for(unsigned int level =0 ; level<n_levels; ++level){
+      for(unsigned int i = 0; i<level_viscosity_vector[level].locally_owned_size();
+         ++i){
+          level_viscosity_vector[level].local_element(i) = static_cast<GMGNumberType> (1.0)/level_viscosity_vector[level].local_element(i);
+
+      }
+    level_viscosity_vector[level].update_ghost_values();
+    }
     for (unsigned int level=0; level<n_levels; ++level)
       {
         level_cell_data[level].is_compressible = this->get_material_model().is_compressible();
