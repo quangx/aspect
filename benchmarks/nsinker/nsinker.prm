@@ -25,6 +25,7 @@ subsection Solver parameters
     set Use weighted BFBT for Schur complement          = true
     set Krylov method for cheap solver steps            = GMRES
     set Linear solver S block tolerance = 1e-2
+    set Linear solver A block tolerance = 1e-6
   end
 
   subsection AMG parameters
@@ -52,11 +53,12 @@ end
 
 subsection Material model
   set Model name = nsinker
-  set Material averaging = none
+  set Material averaging = project to Q1 only viscosity
+
 
   subsection NSinker
     set Number of sinkers = 8
-    set Dynamic viscosity ratio = 1e4
+    set Dynamic viscosity ratio = 1e5
   end
 end
 
@@ -73,7 +75,7 @@ subsection Initial temperature model
 end
 
 subsection Mesh refinement
-  set Initial global refinement                = 1
+  set Initial global refinement                = 5
   set Initial adaptive refinement              = 0
 end
 

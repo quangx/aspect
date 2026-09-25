@@ -142,7 +142,7 @@ namespace aspect
       // Either solve with the top left block
       // or just apply one preconditioner sweep (for the first few
       // iterations of our two-stage outer GMRES iteration)
-      if (do_solve_A == true) 
+      if (do_solve_A == true || do_solve_A==false) 
         {
           SolverControl solver_control(10000, src.l2_norm() * solver_tolerance);
           PrimitiveVectorMemory<VectorType> mem;
