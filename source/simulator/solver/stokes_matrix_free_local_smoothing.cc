@@ -230,12 +230,22 @@ namespace aspect
           //precondition with solve
           op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
           {
+            dst=0.0;
+            for(unsigned int i = 0; i<2; ++i){
             
             VectorType tmp;
+            VectorType residual=src;
             tmp.reinit(src);
-            mp_preconditioner.vmult(tmp,src);
-            mp_preconditioner.vmult(dst,tmp);
+            tmp=0.0;
+            Op_BC_invBT.vmult(tmp,dst);
+            residual-=tmp;
+            VectorType corrected;
+            corrected.reinit(dst);
+            mp_preconditioner.vmult(corrected,residual);
+            dst+=corrected;
             dst.add(-dst.mean_value());
+            }
+            
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
 
@@ -257,7 +267,10 @@ namespace aspect
 
           SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
           ptmp = 0;
-          mp_preconditioner.vmult(ptmp,rhs1);
+
+          //try richardson for BC^{-1}B^T
+          op_mp_preconditioner.vmult(ptmp,rhs1);
+          // mp_preconditioner.vmult(ptmp,rhs1);
 
 
 
@@ -300,7 +313,9 @@ namespace aspect
               solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
             }
           dst = 0;
-          mp_preconditioner.vmult(dst,rhs2);
+          //try richardson iteration
+          // mp_preconditioner.vmult(dst,rhs2);
+          op_mp_preconditioner.vmult(dst,rhs2);
           if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
             {
               std::cout<<"dst mean value is "<<dst.mean_value();
