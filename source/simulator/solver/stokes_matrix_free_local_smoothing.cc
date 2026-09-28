@@ -35,6 +35,7 @@
 #include <deal.II/base/mg_level_object.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/base/types.h>
+#include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_control.h>
 #include <deal.II/lac/trilinos_solver.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
@@ -198,11 +199,36 @@ namespace aspect
     void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::vmult(
       VectorType &dst, const VectorType &src) const
     {
+      
+     
       try
         {
+     //DEBUG TRY DAMPING
+      constexpr double a_r=4.0;
+      dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_damped=diag_A_inv;
+      const auto &dof_handler_v=B_operator.get_matrix_free()->get_dof_handler(0);
+      dealii::IndexSet boundary_dofs(dof_handler_v.n_dofs());
+      std::vector<dealii::types::global_dof_index> dofs(dof_handler_v.get_fe().dofs_per_cell);
+      for(const auto & cell: dof_handler_v.active_cell_iterators()){
+        if(!cell->is_artificial() && cell-> at_boundary()){
+          cell->get_dof_indices(dofs);
+          boundary_dofs.add_indices(dofs.begin(), dofs.end());
+        }
+      }
+      boundary_dofs.compress();
+      for(const auto i: boundary_dofs){
+        if(diag_A_inv_damped.get_partitioner() -> in_local_range(i)){
+          diag_A_inv_damped(i)/=a_r;
+      
+        }
+      }
+
           BC_invBT_Operator<BOperatorType, BTOperatorType>
           Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
+          dealii::LinearOperator<VectorType> op_BC_invBT_damped;
+          BC_invBT_Operator<BOperatorType, BTOperatorType>
+          Op_BC_invBT_damped(B_operator, BT_operator, diag_A_inv_damped);
 
 
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
@@ -217,6 +243,19 @@ namespace aspect
           {
             Op_BC_invBT.vmult(dst,src);
           };
+          op_BC_invBT_damped.reinit_range_vector=[&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_BC_invBT_damped.reinit_domain_vector=[&](VectorType &v, bool)
+          {
+            v.reinit(src);
+          };
+          op_BC_invBT_damped.vmult=[&](VectorType &dst, const VectorType &src)
+          {
+            Op_BC_invBT_damped.vmult(dst,src);
+          };
+    
 
           dealii::LinearOperator<VectorType> op_mp_preconditioner;
           op_mp_preconditioner.reinit_range_vector=[&](VectorType &v, bool)
@@ -231,21 +270,22 @@ namespace aspect
           //precondition with solve
           op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
           {
-            dst=0.0;
-            for(unsigned int i = 0; i<2; ++i){
-            
-            VectorType tmp;
-            VectorType residual=src;
-            tmp.reinit(src);
-            tmp=0.0;
-            Op_BC_invBT.vmult(tmp,dst);
-            residual-=tmp;
-            VectorType corrected;
-            corrected.reinit(dst);
-            mp_preconditioner.vmult(corrected,residual);
-            dst+=corrected;
-            dst.add(-dst.mean_value());
-            }
+          //  dst=0.0;
+          //  for(unsigned int i = 0; i<2; ++i){
+          //  
+          //  VectorType tmp;
+          //  VectorType residual=src;
+          //  tmp.reinit(src);
+          //  tmp=0.0;
+          //  Op_BC_invBT.vmult(tmp,dst);
+          //  residual-=tmp;
+          //  VectorType corrected;
+          //  corrected.reinit(dst);
+          //  mp_preconditioner.vmult(corrected,residual);
+          //  dst+=corrected;
+          //  dst.add(-dst.mean_value());
+          //  }
+              
             
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
@@ -264,19 +304,17 @@ namespace aspect
 
 
           SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-          IterationNumberControl iteration_control(5);
+          SolverCG<VectorType> solver(solver_control,mem);
 
-          SolverCG<VectorType> solver((do_solve_schur_complement?solver_control:iteration_control), mem);
           ptmp = 0;
 
           //try richardson for BC^{-1}B^T
-          op_mp_preconditioner.vmult(ptmp,rhs1);
-          // mp_preconditioner.vmult(ptmp,rhs1);
+//          mp_preconditioner.vmult(ptmp,rhs1);
 
 
 
 
-          // solver.solve(rmv*op_BC_invBT, ptmp, rhs1, mp_preconditioner);
+           solver.solve(rmv*op_BC_invBT_damped, ptmp, rhs1, mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
           {
@@ -292,7 +330,7 @@ namespace aspect
             block_dst = 0;
             BT_operator.vmult(block_dst, block_src);
 
-            block_dst.block(0).scale(diag_A_inv);
+            block_dst.block(0).scale(diag_A_inv_damped);
 
             A_operator.vmult(block_src.block(0), block_dst.block(0));
 
@@ -309,20 +347,17 @@ namespace aspect
 
 
 
-          if (do_solve_schur_complement)
-            {
-              solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
-            }
           dst = 0;
           //try richardson iteration
-          // mp_preconditioner.vmult(dst,rhs2);
-          op_mp_preconditioner.vmult(dst,rhs2);
+ //         mp_preconditioner.vmult(dst,rhs2);
           if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
             {
               std::cout<<"dst mean value is "<<dst.mean_value();
             }
+          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
+          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
+         
           dst.add(-dst.mean_value());
-          // solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
           n_iterations_ += solver_control.last_step();
 
 
