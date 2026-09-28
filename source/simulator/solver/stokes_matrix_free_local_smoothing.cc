@@ -699,53 +699,10 @@ namespace aspect
 
      
     
-  //DEBUG - for the L2 projection include
-  //child's dof in ghost set
-  for(unsigned int level = 0;level<n_levels;++level)
-  {
-   IndexSet relevant_mg_dofs;
-  DoFTools::extract_locally_relevant_level_dofs(dof_handler_projection,
-                                           level,
-                                          relevant_mg_dofs);
-  level_viscosity_vector[level].reinit(
-   dof_handler_projection.locally_owned_mg_dofs(level),
-  relevant_mg_dofs,
-  this->get_mpi_communicator());
-  }
   transfer.interpolate_to_mg(dof_handler_projection,
                                level_viscosity_vector,
                                active_viscosity_vector);
 
-  //DEBUG L2 projection for viscosity
-
-  {
-
-    std::vector<types::global_dof_index> l2_local_dof_indices(dof_handler_projection.get_fe().dofs_per_cell);
-
-    for(int level = static_cast<int>(n_levels) - 2; level >= 0;
-    --level){
-      level_viscosity_vector[level+1].update_ghost_values();
-      for(auto cell = dof_handler_projection.begin_mg(level);
-          cell != dof_handler_projection.end_mg(level);
-          ++cell)
-      {
-        if(cell->is_locally_owned_on_level()){
-          GMGNumberType sum =0;
-          for(unsigned int c=0;c<cell->n_children();++c){
-            cell->child(c) -> get_mg_dof_indices(l2_local_dof_indices);
-            sum+=level_viscosity_vector[level+1](l2_local_dof_indices[0]);
-          }
-      
-          cell->get_mg_dof_indices(l2_local_dof_indices);
-          level_viscosity_vector[level](l2_local_dof_indices[0])
-          =sum/static_cast<GMGNumberType>(cell->n_children());
-        }
-        
-      }
-        level_viscosity_vector[level].update_ghost_values();
-    } 
-
-  }
     for (unsigned int level=0; level<n_levels; ++level)
       {
         level_cell_data[level].is_compressible = this->get_material_model().is_compressible();
