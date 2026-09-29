@@ -204,7 +204,8 @@ namespace aspect
       try
         {
      //DEBUG TRY DAMPING
-      constexpr double a_r=4.0;
+      const unsigned int level = this->get_triangulation().n_global_levels()-1;
+      const double a_r=std::pow(2, static_cast<double>(level-4.0));
       dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_damped=diag_A_inv;
       const auto &dof_handler_v=B_operator.get_matrix_free()->get_dof_handler(0);
       dealii::IndexSet boundary_dofs(dof_handler_v.n_dofs());
