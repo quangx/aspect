@@ -674,7 +674,7 @@ namespace aspect
                     const OperatorCellData<dim, number> &cell_data,
                     const dealii::AffineConstraints<double> &constraints_v,
                     const dealii::AffineConstraints<double> &constraints_p,
-                    
+
                     const dealii::Mapping<dim> &mapping,
                     unsigned int level
                    );
@@ -683,11 +683,11 @@ namespace aspect
 
         void assemble_sparse_matrix(
 
-          
+
           dealii::TrilinosWrappers::SparseMatrix &B,
           unsigned int level
         ) const;
-        
+
         dealii::LinearAlgebra::distributed::Vector<double> compute_exact_diagonal(dealii::TrilinosWrappers::SparseMatrix &A) const;
 
       private:
@@ -719,15 +719,15 @@ namespace aspect
     class MGCoarseGridDirectSolve:public dealii::MGCoarseGridBase<VectorType>
     {
       public:
-      void operator()(const unsigned int level,
-      VectorType &dst,
-      const VectorType &src) const override;
-      void initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix);
+        void operator()(const unsigned int level,
+                        VectorType &dst,
+                        const VectorType &src) const override;
+        void initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix);
 
       private:
-      //might not be necessary to have a solver control for a direct solve.
-      std::unique_ptr<dealii::SolverControl> solver_control;
-      std::unique_ptr<dealii::TrilinosWrappers::SolverDirect> direct_solver;
+        //might not be necessary to have a solver control for a direct solve.
+        std::unique_ptr<dealii::SolverControl> solver_control;
+        std::unique_ptr<dealii::TrilinosWrappers::SolverDirect> direct_solver;
 
     };
 

@@ -199,11 +199,11 @@ namespace aspect
     void DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::vmult(
       VectorType &dst, const VectorType &src) const
     {
-      
-     
+
+
       try
         {
-    
+
 
           BC_invBT_Operator<BOperatorType, BTOperatorType>
           Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
@@ -222,7 +222,7 @@ namespace aspect
           {
             Op_BC_invBT.vmult(dst,src);
           };
-    
+
 
           dealii::LinearOperator<VectorType> op_mp_preconditioner;
           op_mp_preconditioner.reinit_range_vector=[&](VectorType &v, bool)
@@ -237,23 +237,24 @@ namespace aspect
           //precondition with solve
           op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
           {
-   dst=0.0;
-   for(unsigned int i = 0; i<2; ++i){
-   
-   VectorType tmp;
-   VectorType residual=src;
-   tmp.reinit(src);
-   tmp=0.0;
-   Op_BC_invBT.vmult(tmp,dst);
-   residual-=tmp;
-   VectorType corrected;
-   corrected.reinit(dst);
-   mp_preconditioner.vmult(corrected,residual);
-   dst+=corrected;
-   dst.add(-dst.mean_value());
-   }
-              
-            
+            dst=0.0;
+            for (unsigned int i = 0; i<2; ++i)
+              {
+
+                VectorType tmp;
+                VectorType residual=src;
+                tmp.reinit(src);
+                tmp=0.0;
+                Op_BC_invBT.vmult(tmp,dst);
+                residual-=tmp;
+                VectorType corrected;
+                corrected.reinit(dst);
+                mp_preconditioner.vmult(corrected,residual);
+                dst+=corrected;
+                dst.add(-dst.mean_value());
+              }
+
+
           };
           auto rmv=remove_mean_value<>(op_BC_invBT);
 
@@ -323,9 +324,9 @@ namespace aspect
             }
 //          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
 //          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
-         
+
           dst.add(-dst.mean_value());
- //         n_iterations_ += solver_control.last_step();
+//         n_iterations_ += solver_control.last_step();
 
 
         }
@@ -351,15 +352,18 @@ namespace aspect
 
 
   }
-  namespace MatrixFreeStokesOperators{
-      template<typename VectorType>
-    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::operator()(const unsigned int /*level*/,VectorType &dst, const VectorType &src) const{
+  namespace MatrixFreeStokesOperators
+  {
+    template<typename VectorType>
+    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::operator()(const unsigned int /*level*/,VectorType &dst, const VectorType &src) const
+    {
       direct_solver->solve(dst,src);
       dst.add(-dst.mean_value());
     }
 
     template<typename VectorType>
-    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix){
+    void MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType>::initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix)
+    {
       solver_control=std::make_unique<dealii::SolverControl>(1,1e-10);
       direct_solver=std::make_unique<dealii::TrilinosWrappers::SolverDirect>(*solver_control);
       direct_solver->initialize(coarse_matrix);
@@ -599,26 +603,27 @@ namespace aspect
       },
       active_viscosity_vector);
     }
-    
+
     //diag A bfbt - dampen contributions from velocity dofs touching boundary
-  //  by scaling the viscosity values.
+    //  by scaling the viscosity values.
 
-   const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
-   dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
+    const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
+    dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
 
-  {
-    std::vector<types::global_dof_index> local_dof_indices_damped(dof_handler_projection.get_fe().dofs_per_cell);
-    for(const auto &cell:dof_handler_projection.active_cell_iterators())
-        if(!cell->is_artificial() && cell->at_boundary()){
-          cell->get_dof_indices(local_dof_indices_damped);
-          for(const auto dof:local_dof_indices_damped)
-            if(active_viscosity_vector_damped.get_partitioner()->in_local_range(dof))
-              active_viscosity_vector_damped(dof)*=a_r;
-        }
+    {
+      std::vector<types::global_dof_index> local_dof_indices_damped(dof_handler_projection.get_fe().dofs_per_cell);
+      for (const auto &cell:dof_handler_projection.active_cell_iterators())
+        if (!cell->is_artificial() && cell->at_boundary())
+          {
+            cell->get_dof_indices(local_dof_indices_damped);
+            for (const auto dof:local_dof_indices_damped)
+              if (active_viscosity_vector_damped.get_partitioner()->in_local_range(dof))
+                active_viscosity_vector_damped(dof)*=a_r;
+          }
 
 
 
-  }
+    }
 
 
     minimum_viscosity = dealii::Utilities::MPI::min(minimum_viscosity_local, this->get_mpi_communicator());
@@ -722,81 +727,88 @@ namespace aspect
     transfer.build(dof_handler_projection);
 
 
-     
-    
-  transfer.interpolate_to_mg(dof_handler_projection,
+
+
+    transfer.interpolate_to_mg(dof_handler_projection,
                                level_viscosity_vector,
                                active_viscosity_vector);
 
-  transfer.interpolate_to_mg(dof_handler_projection,
+    transfer.interpolate_to_mg(dof_handler_projection,
                                level_viscosity_vector_damped,
                                active_viscosity_vector_damped);
-    for (unsigned int level=0; level<n_levels; ++level)
-      {
-        level_cell_data[level].is_compressible = this->get_material_model().is_compressible();
-        level_cell_data[level].pressure_scaling = this->get_pressure_scaling();
+    auto fill_level_cell_data=[&]
+                              (const MGLevelObject<dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> &viscosity_src,
+                               MGLevelObject<typename ABlockOperatorType::CellData> &cell_data_out)
+    {
 
-        // Create viscosity tables on each level.
-        const unsigned int n_cells = mg_matrices_A_block[level].get_matrix_free()->n_cell_batches();
 
-        const unsigned int n_q_points = quadrature_formula.size();
 
-        std::vector<GMGNumberType> values_on_quad;
+      for (unsigned int level=0; level<n_levels; ++level)
+        {
+          level_cell_data[level].is_compressible = this->get_material_model().is_compressible();
+          level_cell_data[level].pressure_scaling = this->get_pressure_scaling();
 
-        // One value per cell is required for DGQ0 projection and n_q_points
-        // values per cell for DGQ1.
-        if (dof_handler_projection.get_fe().degree == 0)
-          level_cell_data[level].viscosity.reinit(TableIndices<2>(n_cells, 1));
-        else
-          {
-            values_on_quad.resize(n_q_points);
-            level_cell_data[level].viscosity.reinit(TableIndices<2>(n_cells, n_q_points));
-          }
+          // Create viscosity tables on each level.
+          const unsigned int n_cells = mg_matrices_A_block[level].get_matrix_free()->n_cell_batches();
 
-        std::vector<types::global_dof_index> local_dof_indices(fe_projection.dofs_per_cell);
-        for (unsigned int cell=0; cell<n_cells; ++cell)
-          {
-            const unsigned int n_components_filled = mg_matrices_A_block[level].get_matrix_free()->n_active_entries_per_cell_batch(cell);
+          const unsigned int n_q_points = quadrature_formula.size();
 
-            for (unsigned int i=0; i<n_components_filled; ++i)
-              {
-                typename DoFHandler<dim>::level_cell_iterator FEQ_cell =
-                  mg_matrices_A_block[level].get_matrix_free()->get_cell_iterator(cell,i);
-                typename DoFHandler<dim>::level_cell_iterator DG_cell(&(this->get_triangulation()),
-                                                                      FEQ_cell->level(),
-                                                                      FEQ_cell->index(),
-                                                                      &dof_handler_projection);
-                DG_cell->get_active_or_mg_dof_indices(local_dof_indices);
+          std::vector<GMGNumberType> values_on_quad;
 
-                // For DGQ0, we simply use the viscosity at the single
-                // support point of the element. For DGQ1, we must project
-                // back to quadrature point values.
-                if (dof_handler_projection.get_fe().degree == 0)
-                  level_cell_data[level].viscosity(cell, 0)[i] = level_viscosity_vector[level](local_dof_indices[0]);
-                else
-                  {
-                    fe_values_projection.reinit(DG_cell);
-                    fe_values_projection.get_function_values(level_viscosity_vector[level],
-                                                             local_dof_indices,
-                                                             values_on_quad);
+          // One value per cell is required for DGQ0 projection and n_q_points
+          // values per cell for DGQ1.
+          if (dof_handler_projection.get_fe().degree == 0)
+            level_cell_data[level].viscosity.reinit(TableIndices<2>(n_cells, 1));
+          else
+            {
+              values_on_quad.resize(n_q_points);
+              level_cell_data[level].viscosity.reinit(TableIndices<2>(n_cells, n_q_points));
+            }
 
-                    // Do not allow viscosity to be greater than or less than the limits
-                    // of the evaluated viscosity on the active level.
-                    for (unsigned int q=0; q<n_q_points; ++q)
-                      level_cell_data[level].viscosity(cell,q)[i]
-                        = std::min(std::max(values_on_quad[q], static_cast<GMGNumberType>(minimum_viscosity)),
-                                   static_cast<GMGNumberType>(maximum_viscosity));
-                  }
-              }
-          }
+          std::vector<types::global_dof_index> local_dof_indices(fe_projection.dofs_per_cell);
+          for (unsigned int cell=0; cell<n_cells; ++cell)
+            {
+              const unsigned int n_components_filled = mg_matrices_A_block[level].get_matrix_free()->n_active_entries_per_cell_batch(cell);
 
-        // Store viscosity tables and other data into the multigrid level matrix-free objects.
-        mg_matrices_A_block[level].set_cell_data (level_cell_data[level]);
-        mg_matrices_Schur_complement[level].set_cell_data (level_cell_data[level]);
-        // mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
-        mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
-        mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
-      }
+              for (unsigned int i=0; i<n_components_filled; ++i)
+                {
+                  typename DoFHandler<dim>::level_cell_iterator FEQ_cell =
+                    mg_matrices_A_block[level].get_matrix_free()->get_cell_iterator(cell,i);
+                  typename DoFHandler<dim>::level_cell_iterator DG_cell(&(this->get_triangulation()),
+                                                                        FEQ_cell->level(),
+                                                                        FEQ_cell->index(),
+                                                                        &dof_handler_projection);
+                  DG_cell->get_active_or_mg_dof_indices(local_dof_indices);
+
+                  // For DGQ0, we simply use the viscosity at the single
+                  // support point of the element. For DGQ1, we must project
+                  // back to quadrature point values.
+                  if (dof_handler_projection.get_fe().degree == 0)
+                    level_cell_data[level].viscosity(cell, 0)[i] = level_viscosity_vector[level](local_dof_indices[0]);
+                  else
+                    {
+                      fe_values_projection.reinit(DG_cell);
+                      fe_values_projection.get_function_values(level_viscosity_vector[level],
+                                                               local_dof_indices,
+                                                               values_on_quad);
+
+                      // Do not allow viscosity to be greater than or less than the limits
+                      // of the evaluated viscosity on the active level.
+                      for (unsigned int q=0; q<n_q_points; ++q)
+                        level_cell_data[level].viscosity(cell,q)[i]
+                          = std::min(std::max(values_on_quad[q], static_cast<GMGNumberType>(minimum_viscosity)),
+                                     static_cast<GMGNumberType>(maximum_viscosity));
+                    }
+                }
+            }
+        };
+      // Store viscosity tables and other data into the multigrid level matrix-free objects.
+      mg_matrices_A_block[level].set_cell_data (level_cell_data[level]);
+      mg_matrices_Schur_complement[level].set_cell_data (level_cell_data[level]);
+      // mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
+      mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
+      mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
+    }
 
     {
       // create active mesh tables for stuff needed in Newton method
@@ -1430,8 +1442,8 @@ namespace aspect
             // mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
             auto eigenvalue_info=mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
             this->get_pcout()<<" level: "<<level<<" lambda_min: "<<
-            eigenvalue_info.min_eigenvalue_estimate<<", lambda_max:"
-            <<eigenvalue_info.max_eigenvalue_estimate<<" ]"<<std::endl;
+                             eigenvalue_info.min_eigenvalue_estimate<<", lambda_max:"
+                             <<eigenvalue_info.max_eigenvalue_estimate<<" ]"<<std::endl;
           }
         else
           {
@@ -1466,10 +1478,11 @@ namespace aspect
 
     MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT;
     MatrixFreeStokesOperators::MGCoarseGridDirectSolve<VectorType> mg_coarse_BCinvBT_direct_solve;
-    if (this->get_parameters().use_bfbt){
-      mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
-      
-    }
+    if (this->get_parameters().use_bfbt)
+      {
+        mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
+
+      }
     else
       {
         mg_coarse_Schur.initialize(mg_smoother_Schur);
@@ -1582,10 +1595,11 @@ namespace aspect
                                      mg_smoother_BCinvBT_remove_ns);
     if (this->get_parameters().use_bfbt)
       mg_BCinvBT.set_edge_matrices(mg_interface_BCinvBT, mg_interface_BCinvBT);
-    else{
-          mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
+    else
+      {
+        mg_Schur.set_edge_matrices(mg_interface_Schur, mg_interface_Schur);
 
-    }
+      }
 
 
 
@@ -1785,7 +1799,7 @@ namespace aspect
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
-          
+
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
@@ -2031,7 +2045,7 @@ namespace aspect
             solver(solver_control_cheap, mem,
                    SolverFGMRES<dealii::LinearAlgebra::distributed::BlockVector<double>>::
                    AdditionalData(this->get_parameters().stokes_gmres_restart_length+2
-                                 /* , true)*/));
+                                  /* , true)*/));
 
             solver.solve (stokes_matrix,
                           solution_copy,
@@ -2586,7 +2600,8 @@ namespace aspect
 
             std::vector<const DoFHandler<dim>*> stokes_dofs {&dof_handler_v, &dof_handler_p};
             std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v_stored[level],
-            &level_constraints_p_stored[level]};
+                  &level_constraints_p_stored[level]
+            };
 
             matrix_free_level->reinit(mapping,
                                       stokes_dofs,
@@ -2652,13 +2667,13 @@ namespace aspect
             // mg_matrices_Laplace[level].compute_diagonal();
             const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
             mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level],
-                                              mg_matrices_BT_block[level], 
+                                              mg_matrices_BT_block[level],
                                               level_diag_A_inv, level_cell_data[level],
-                                            level_constraints_v_stored[level],
-                                            level_constraints_p_stored[level],
-                                            
-                                          this->get_mapping(),
-                                        level);
+                                              level_constraints_v_stored[level],
+                                              level_constraints_p_stored[level],
+
+                                              this->get_mapping(),
+                                              level);
             mg_matrices_BCinvBT[level].compute_diagonal();
 
           }

@@ -251,6 +251,7 @@ namespace aspect
       AffineConstraints<double> constraints_p;
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
+      MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block_damped;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
       MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
       MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
