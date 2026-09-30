@@ -452,6 +452,7 @@ namespace aspect
          * @param mp_matrix Pressure mass matrix used as preconditioner for BC^{-1}B^T.
          */
         DiagBFBT(const PreconditionerMp &mp_preconditioner,
+                 const PreconditionerMp &mp_preconditioner_damped,
                  const bool do_solve_schur_complement,
                  const double solver_tolerance,
                  const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
@@ -469,6 +470,7 @@ namespace aspect
       private:
         mutable unsigned int n_iterations_;
         const PreconditionerMp &mp_preconditioner;
+        const PreconditionerMp &mp_preonditioner_damped;
         const bool do_solve_schur_complement;
         const double solver_tolerance;
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
