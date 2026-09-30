@@ -599,6 +599,27 @@ namespace aspect
       },
       active_viscosity_vector);
     }
+    
+    //diag A bfbt - dampen contributions from velocity dofs touching boundary
+  //  by scaling the viscosity values.
+
+   const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
+   dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
+
+  {
+    std::vector<types::global_dof_index> local_dof_indices_damped(dof_handler_projection.get_fe().dofs_per_cell);
+    for(const auto &cell:dof_handler_projection.active_cell_iterators())
+        if(!cell->is_artificial() && cell->at_boundary()){
+          cell->get_dof_indices(local_dof_indices_damped);
+          for(const auto dof:local_dof_indices_damped)
+            if(active_viscosity_vector_damped.get_partitioner()->in_local_range(dof))
+              active_viscosity_vector_damped(dof)*=a_r;
+        }
+
+
+
+  }
+
 
     minimum_viscosity = dealii::Utilities::MPI::min(minimum_viscosity_local, this->get_mpi_communicator());
     maximum_viscosity = dealii::Utilities::MPI::max(maximum_viscosity_local, this->get_mpi_communicator());
@@ -691,6 +712,8 @@ namespace aspect
     MGLevelObject<dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> level_viscosity_vector;
     level_viscosity_vector.resize(0,n_levels-1);
 
+    MGLevelObject<dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> level_viscosity_vector_damped;
+    level_viscosity_vector_damped.resize(0,n_levels-1);
     // Project the active level viscosity vector to multilevel vector representations
     // using MG transfer objects. This transfer is based on the same linear operator used to
     // transfer data inside a v-cycle.
@@ -705,6 +728,9 @@ namespace aspect
                                level_viscosity_vector,
                                active_viscosity_vector);
 
+  transfer.interpolate_to_mg(dof_handler_projection,
+                               level_viscosity_vector_damped,
+                               active_viscosity_vector_damped);
     for (unsigned int level=0; level<n_levels; ++level)
       {
         level_cell_data[level].is_compressible = this->get_material_model().is_compressible();
