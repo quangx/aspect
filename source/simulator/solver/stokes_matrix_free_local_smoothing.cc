@@ -203,34 +203,11 @@ namespace aspect
      
       try
         {
-     //DEBUG TRY DAMPING
     
-      const auto &dof_handler_v=B_operator.get_matrix_free()->get_dof_handler(0);
-      const unsigned int level = dof_handler_v.get_triangulation().n_global_levels()-1;
-      const double a_r=std::pow(2, static_cast<double>(level-4.0));
-      dealii::LinearAlgebra::distributed::Vector<double> diag_A_inv_damped=diag_A_inv;
-      dealii::IndexSet boundary_dofs(dof_handler_v.n_dofs());
-      std::vector<dealii::types::global_dof_index> dofs(dof_handler_v.get_fe().dofs_per_cell);
-      for(const auto & cell: dof_handler_v.active_cell_iterators()){
-        if(!cell->is_artificial() && cell-> at_boundary()){
-          cell->get_dof_indices(dofs);
-          boundary_dofs.add_indices(dofs.begin(), dofs.end());
-        }
-      }
-      boundary_dofs.compress();
-      for(const auto i: boundary_dofs){
-        if(diag_A_inv_damped.get_partitioner() -> in_local_range(i)){
-          diag_A_inv_damped(i)/=a_r;
-      
-        }
-      }
 
           BC_invBT_Operator<BOperatorType, BTOperatorType>
           Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
-          dealii::LinearOperator<VectorType> op_BC_invBT_damped;
-          BC_invBT_Operator<BOperatorType, BTOperatorType>
-          Op_BC_invBT_damped(B_operator, BT_operator, diag_A_inv_damped);
 
 
           op_BC_invBT.reinit_range_vector=[&](VectorType &v, bool)
@@ -244,18 +221,6 @@ namespace aspect
           op_BC_invBT.vmult=[&](VectorType &dst, const VectorType &src)
           {
             Op_BC_invBT.vmult(dst,src);
-          };
-          op_BC_invBT_damped.reinit_range_vector=[&](VectorType &v, bool)
-          {
-            v.reinit(src);
-          };
-          op_BC_invBT_damped.reinit_domain_vector=[&](VectorType &v, bool)
-          {
-            v.reinit(src);
-          };
-          op_BC_invBT_damped.vmult=[&](VectorType &dst, const VectorType &src)
-          {
-            Op_BC_invBT_damped.vmult(dst,src);
           };
     
 
@@ -272,21 +237,21 @@ namespace aspect
           //precondition with solve
           op_mp_preconditioner.vmult=[&](VectorType &dst, const VectorType &src)
           {
-          //  dst=0.0;
-          //  for(unsigned int i = 0; i<2; ++i){
-          //  
-          //  VectorType tmp;
-          //  VectorType residual=src;
-          //  tmp.reinit(src);
-          //  tmp=0.0;
-          //  Op_BC_invBT.vmult(tmp,dst);
-          //  residual-=tmp;
-          //  VectorType corrected;
-          //  corrected.reinit(dst);
-          //  mp_preconditioner.vmult(corrected,residual);
-          //  dst+=corrected;
-          //  dst.add(-dst.mean_value());
-          //  }
+   dst=0.0;
+   for(unsigned int i = 0; i<2; ++i){
+   
+   VectorType tmp;
+   VectorType residual=src;
+   tmp.reinit(src);
+   tmp=0.0;
+   Op_BC_invBT.vmult(tmp,dst);
+   residual-=tmp;
+   VectorType corrected;
+   corrected.reinit(dst);
+   mp_preconditioner.vmult(corrected,residual);
+   dst+=corrected;
+   dst.add(-dst.mean_value());
+   }
               
             
           };
@@ -305,19 +270,19 @@ namespace aspect
 
 
 
-          SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
-          SolverCG<VectorType> solver(solver_control,mem);
+//          SolverControl solver_control(5000, rhs1.l2_norm() * solver_tolerance, false, true);
+//         SolverCG<VectorType> solver(solver_control,mem);
 
           ptmp = 0;
 
           //try richardson for BC^{-1}B^T
-//          mp_preconditioner.vmult(ptmp,rhs1);
+          mp_preconditioner.vmult(ptmp,rhs1);
+          ptmp.add(-ptmp.mean_value());
 
 
 
-
-           solver.solve(rmv*op_BC_invBT_damped, ptmp, rhs1, mp_preconditioner);
-          n_iterations_ += solver_control.last_step();
+//           solver.solve(rmv*op_BC_invBT_damped, ptmp, rhs1, mp_preconditioner);
+//          n_iterations_ += solver_control.last_step();
 
           {
             dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -332,7 +297,7 @@ namespace aspect
             block_dst = 0;
             BT_operator.vmult(block_dst, block_src);
 
-            block_dst.block(0).scale(diag_A_inv_damped);
+            block_dst.block(0).scale(diag_A_inv);
 
             A_operator.vmult(block_src.block(0), block_dst.block(0));
 
@@ -351,16 +316,16 @@ namespace aspect
 
           dst = 0;
           //try richardson iteration
- //         mp_preconditioner.vmult(dst,rhs2);
+          mp_preconditioner.vmult(dst,rhs2);
           if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
             {
               std::cout<<"dst mean value is "<<dst.mean_value();
             }
-          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
-          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
+//          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
+//          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
          
           dst.add(-dst.mean_value());
-          n_iterations_ += solver_control.last_step();
+ //         n_iterations_ += solver_control.last_step();
 
 
         }
