@@ -2484,6 +2484,8 @@ namespace aspect
       // mg_matrices_Laplace.resize(0,n_levels-1);
       mg_matrices_BCinvBT.clear_elements();
       mg_matrices_BCinvBT.resize(0, n_levels-1);
+      mg_matrices_BCinvBT_damped.clear_elements();
+      mg_matrices_BCinvBT_damped.resize(0, n_levels-1);
       level_constraints_p_stored.resize(n_levels);
       level_constraints_v_stored.resize(n_levels);
 
@@ -2695,7 +2697,22 @@ namespace aspect
                                               this->get_mapping(),
                                               level);
             mg_matrices_BCinvBT[level].compute_diagonal();
+            
+            mg_matrices_A_block_damped[level].compute_diagonal();
+            const auto &level_diag_A_inv_damped=
+            mg_matrices_A_block_damped[level].get_matrix_diagonal_inverse()
+            ->get_vector();
 
+            mg_matrices_BCinvBT_damped[level].set_up(
+                mg_matrices_B_block[level],
+                mg_matrices_BT_block[level],
+                level_diag_A_inv_damped,
+                level_cell_data[level],
+                level_constraints_v_stored[level],
+                level_constraints_p_stored[level],
+                this->get_mapping(),
+                level);
+              mg_matrices_BCinvBT_damped[level].compute_diagonal();
           }
         else
           {
