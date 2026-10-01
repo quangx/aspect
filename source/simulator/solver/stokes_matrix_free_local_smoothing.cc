@@ -180,6 +180,7 @@ namespace aspect
       const bool do_solve_schur_complement,
       const double solver_tolerance,
       const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+      const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped,
       const StokesMatrixType &system_matrix,
       const AOperatorType &A_operator,
       const BOperatorType &B_operator,
@@ -191,6 +192,7 @@ namespace aspect
         do_solve_schur_complement(do_solve_schur_complement),
         solver_tolerance(solver_tolerance),
         diag_A_inv(diag_A_inv),
+        diag_A_inv_damped(diag_A_inv_damped),
         system_matrix(system_matrix),
         A_operator(A_operator),
         B_operator(B_operator),
@@ -1950,6 +1952,7 @@ namespace aspect
 
 
     A_block_matrix.compute_diagonal();
+    A_block_matrix_damped.compute_diagonal();
     Schur_complement_block_matrix.compute_diagonal();
     if (this->get_parameters().use_bfbt)
       {
@@ -1959,6 +1962,10 @@ namespace aspect
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv =
           A_block_matrix.get_matrix_diagonal_inverse()->get_vector();
+
+
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped =
+          A_block_matrix_damped.get_matrix_diagonal_inverse()->get_vector();
 
         const dealii::DiagonalMatrix<VectorType> &diag_mp=*Schur_complement_block_matrix.get_matrix_diagonal_inverse();
 
@@ -1988,6 +1995,7 @@ namespace aspect
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
+                                      diag_A_inv_damped,
                                       stokes_matrix,
                                       A_block_matrix,
                                       B_block,
@@ -2000,6 +2008,7 @@ namespace aspect
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
+                                          diag_A_inv_damped,
                                           stokes_matrix,
                                           A_block_matrix,
                                           B_block,

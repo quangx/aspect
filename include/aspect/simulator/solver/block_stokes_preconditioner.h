@@ -456,6 +456,7 @@ namespace aspect
                  const bool do_solve_schur_complement,
                  const double solver_tolerance,
                  const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
+                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped,
                  const StokesMatrixType &system_matrix,
                  const AOperatorType &A_operator,
                  const BOperatorType &B_operator,
@@ -474,6 +475,7 @@ namespace aspect
         const bool do_solve_schur_complement;
         const double solver_tolerance;
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped;
         const StokesMatrixType &system_matrix;
         const AOperatorType &A_operator;
         const BOperatorType &B_operator;

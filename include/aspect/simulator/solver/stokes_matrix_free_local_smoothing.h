@@ -238,7 +238,7 @@ namespace aspect
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
-      ABlockmatrixType A_block_matrix_damped;
+      ABlockMatrixType A_block_matrix_damped;
       BTBlockOperatorType BT_block;
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
