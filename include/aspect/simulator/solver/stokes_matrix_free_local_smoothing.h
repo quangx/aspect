@@ -212,6 +212,8 @@ namespace aspect
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.
        */
       MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data;
+      
+      MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data_damped;
 
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for each multigrid level.
@@ -236,6 +238,7 @@ namespace aspect
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
+      ABlockmatrixType A_block_matrix_damped;
       BTBlockOperatorType BT_block;
       BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;

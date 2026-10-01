@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mg_level_object.h>
+#include <deal.II/base/table_indices.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/base/types.h>
 #include <deal.II/lac/la_parallel_vector.h>
@@ -301,7 +302,7 @@ namespace aspect
             block_dst = 0;
             BT_operator.vmult(block_dst, block_src);
 
-            block_dst.block(0).scale(diag_A_inv);
+            block_dst.block(0).scale(diag_A_inv_damped);
 
             A_operator.vmult(block_src.block(0), block_dst.block(0));
 
@@ -611,6 +612,8 @@ namespace aspect
     //  by scaling the viscosity values.
 
     const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
+  
+//    const double a_r=8.0;
     dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
 
     {
@@ -701,6 +704,78 @@ namespace aspect
 
     active_cell_data.is_compressible = this->get_material_model().is_compressible();
     active_cell_data.pressure_scaling = this->get_pressure_scaling();
+  //for diagonal BFBT boundary correction
+    {
+      const unsigned int n_cells = stokes_matrix.get_matrix_free()->n_cell_batches();
+      const unsigned int n_q_points = quadrature_formula.size();
+      std::vector<double> values_on_quad (n_q_points);
+
+    //initialize tables 
+
+     if(dof_handler_projection.get_fe().degree==0)
+        active_cell_data_damped.viscosity.reinit(TableIndices<2>(n_cells,1));
+    else
+      active_cell_data_damped.viscosity.reinit(TableIndices<2>(n_cells,
+                                                                      n_q_points
+                                                                      ));
+
+
+      std::vector<types::global_dof_index> local_dof_indices(fe_projection.dofs_per_cell);
+      for (unsigned int cell=0; cell<n_cells; ++cell)
+        {
+          const unsigned int n_components_filled = stokes_matrix.get_matrix_free()->n_active_entries_per_cell_batch(cell);
+
+          for (unsigned int i=0; i<n_components_filled; ++i)
+            {
+              typename DoFHandler<dim>::active_cell_iterator FEQ_cell =
+                stokes_matrix.get_matrix_free()->get_cell_iterator(cell,i);
+              typename DoFHandler<dim>::active_cell_iterator DG_cell(&(this->get_triangulation()),
+                                                                     FEQ_cell->level(),
+                                                                     FEQ_cell->index(),
+                                                                     &dof_handler_projection);
+              DG_cell->get_active_or_mg_dof_indices(local_dof_indices);
+
+#ifdef DEBUG
+              {
+                // Verify that all MatrixFree objects iterate over cells in the same way:
+                typename DoFHandler<dim>::active_cell_iterator s_cell =
+                  Schur_complement_block_matrix.get_matrix_free()->get_cell_iterator(cell,i,1);
+                double distance_s = s_cell->center().distance(FEQ_cell->center());
+                Assert(distance_s < 1e-10, ExcInternalError());
+
+                typename DoFHandler<dim>::active_cell_iterator A_cell =
+                  A_block_matrix.get_matrix_free()->get_cell_iterator(cell,i);
+                double distance_A = A_cell->center().distance(FEQ_cell->center());
+                Assert(distance_A < 1e-10, ExcInternalError());
+              }
+#endif
+
+              // For DGQ0, we simply use the viscosity at the single
+              // support point of the element. For DGQ1, we must project
+              // back to quadrature point values.
+               if (dof_handler_projection.get_fe().degree == 0)
+                active_cell_data_damped.viscosity(cell, 0)[i] = active_viscosity_vector_damped(local_dof_indices[0]);
+              else
+                {
+                  fe_values_projection.reinit(DG_cell);
+                  fe_values_projection.get_function_values(active_viscosity_vector_damped,
+                                                           local_dof_indices,
+                                                           values_on_quad);
+
+                  // Do not allow viscosity to be greater than or less than the limits
+                  // of the evaluated viscosity on the active level.
+                  for (unsigned int q=0; q<n_q_points; ++q)
+                    active_cell_data_damped.viscosity(cell, q)[i]
+                      = std::min(std::max(values_on_quad[q], minimum_viscosity), maximum_viscosity);
+                }
+            }
+        }
+    }
+    active_cell_data_damped.is_compressible=this->get_material_model().is_compressible();
+
+    active_cell_data_damped.pressure_scaling=this->get_pressure_scaling();
+    A_block_matrix_damped.set_cell_data(active_cell_data_damped);
+  
 
     // Store viscosity tables and other data into the active level matrix-free objects.
     stokes_matrix.set_cell_data(active_cell_data);
@@ -2515,6 +2590,7 @@ namespace aspect
       A_block_matrix.clear();
       const std::vector<unsigned int> selected_dof_handler = {/*velocity =*/0};
       A_block_matrix.initialize(matrix_free, selected_dof_handler);
+      A_block_matrix_damped.initialize(matrix_free,selected_dof_handler);
     }
 
     // B^T block matrix
