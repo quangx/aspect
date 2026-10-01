@@ -816,7 +816,6 @@ namespace aspect
       mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
       mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
       }
-      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_damped;
 
       level_cell_data_damped.resize(0,n_levels-1);
       fill_level_cell_data(level_viscosity_vector_damped,level_cell_data_damped);
