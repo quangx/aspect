@@ -1426,73 +1426,6 @@ namespace aspect
         }
     }
 
-  //damped BC_invBT
-
-    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> mg_smoother_BCinvBT_damped(4);
-    internal::MGSmootherRemoveNullspace<VectorType, mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>> mg_smoother_BCinvBT_remove_ns_damped;
-    mg_smoother_BCinvBT_remove_ns_damped.initialize(mg_smoother_BCinvBT_damped);
-
-  {
-    MGLevelObject<typename MSmootherBCinvBTType::AdditionalData> 
-      smoother_data_BCinvBT_damped;
-    smoother_data_BCinvBT_damped.resize(0, this->get_triangulation().n_global_levels()-1);
-
-      for (unsigned int level = 0; level<this->get_triangulation().n_global_levels(); ++level)
-        {
-          if (level > 0)
-            {
-
-                  smoother_data_BCinvBT_damped[level].smoothing_range=15.;
-                  smoother_data_BCinvBT_damped[level].degree = 4;
-                  smoother_data_BCinvBT_damped[level].eig_cg_n_iterations=10;
-
-                }
-            
-          else
-            {
-
-                  smoother_data_BCinvBT_damped[level].smoothing_range = 1e-3;
-                  smoother_data_BCinvBT_damped[level].degree = 8;
-                  smoother_data_BCinvBT_damped[level].eig_cg_n_iterations=100;
-
-            }
-
-              smoother_data_BCinvBT_damped[level].preconditioner = mg_matrices_BCinvBT_damped[level].get_matrix_diagonal_inverse();
-
-        }
-    mg_smoother_BCinvBT_damped.initialize(mg_matrices_BCinvBT_damped, smoother_data_BCinvBT_damped);
-
-  }
-
-    MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT_damped;
-    mg_coarse_BCinvBT_damped.initialize(mg_smoother_BCinvBT_damped);
-    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns_damped;
-    mg_coarse_BCinvBT_remove_ns_damped.initialize(mg_coarse_BCinvBT_damped);
-
-  
-    MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGDiagonalBCinvBTType>>
-  mg_interface_matrices_BCinvBT_damped;
-
-    mg_interface_matrices_BCinvBT_damped.resize(0,this->triangulation().
-                                                n_global_levels()-1);
-    for(unsigned int level=0;level<this->get_triangulation().n_global_levels();
-  ++level)
-      mg_interface_matrices_BCinvBT_damped[level].initialize(mg_matrices_BCinvBT_damped[level]);
-
-  mg::Matrix<VectorType> mg_interface_BCinvBT_damped(
-    mg_interface_matrices_BCinvBT_damped);
-  mg::Matrix<VectorType> mg_matrix_BCinvBT_damped(mg_matrices_BCinvBT_damped);
-  Multigrid<VectorType>mg_BCinvBT_damped(mg_matrix_BCinvBT_damped,
-                                                       mg_coarse_BCinvBT_remove_ns_damped,
-                                                       mg_transfer_Schur_complement,
-                                                       mg_smoother_BCinvBT_remove_ns_damped
-                                                       ,
-                                                       mg_smoother_BCinvBT_remove_ns_damped);
-  mg_BCinvBT_damped.set_edge_matrices(mg_interface_BCinvBT_damped,
-                                      mg_interface_BCinvBT_damped);
-  GMGPreconditioner prec_BCinvBT_damped(dof_handler_p,
-                                        mg_BCinvBT_damped,
-                                        mg_transfer_Schur_complement);
     
 
   
@@ -1696,6 +1629,73 @@ namespace aspect
     //GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
     GMGPreconditioner prec_BCinvBT(dof_handler_p, mg_BCinvBT, mg_transfer_Schur_complement);
 
+  //damped BC_invBT
+
+    mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType> mg_smoother_BCinvBT_damped(4);
+    internal::MGSmootherRemoveNullspace<VectorType, mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>> mg_smoother_BCinvBT_remove_ns_damped;
+    mg_smoother_BCinvBT_remove_ns_damped.initialize(mg_smoother_BCinvBT_damped);
+
+  {
+    MGLevelObject<typename MSmootherBCinvBTType::AdditionalData> 
+      smoother_data_BCinvBT_damped;
+    smoother_data_BCinvBT_damped.resize(0, this->get_triangulation().n_global_levels()-1);
+
+      for (unsigned int level = 0; level<this->get_triangulation().n_global_levels(); ++level)
+        {
+          if (level > 0)
+            {
+
+                  smoother_data_BCinvBT_damped[level].smoothing_range=15.;
+                  smoother_data_BCinvBT_damped[level].degree = 4;
+                  smoother_data_BCinvBT_damped[level].eig_cg_n_iterations=10;
+
+                }
+            
+          else
+            {
+
+                  smoother_data_BCinvBT_damped[level].smoothing_range = 1e-3;
+                  smoother_data_BCinvBT_damped[level].degree = 8;
+                  smoother_data_BCinvBT_damped[level].eig_cg_n_iterations=100;
+
+            }
+
+              smoother_data_BCinvBT_damped[level].preconditioner = mg_matrices_BCinvBT_damped[level].get_matrix_diagonal_inverse();
+
+        }
+    mg_smoother_BCinvBT_damped.initialize(mg_matrices_BCinvBT_damped, smoother_data_BCinvBT_damped);
+
+  }
+
+    MGCoarseGridApplySmoother<VectorType> mg_coarse_BCinvBT_damped;
+    mg_coarse_BCinvBT_damped.initialize(mg_smoother_BCinvBT_damped);
+    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns_damped;
+    mg_coarse_BCinvBT_remove_ns_damped.initialize(mg_coarse_BCinvBT_damped);
+
+  
+    MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGDiagonalBCinvBTType>>
+  mg_interface_matrices_BCinvBT_damped;
+
+    mg_interface_matrices_BCinvBT_damped.resize(0,this->get_triangulation().
+                                                n_global_levels()-1);
+    for(unsigned int level=0;level<this->get_triangulation().n_global_levels();
+  ++level)
+      mg_interface_matrices_BCinvBT_damped[level].initialize(mg_matrices_BCinvBT_damped[level]);
+
+  mg::Matrix<VectorType> mg_interface_BCinvBT_damped(
+    mg_interface_matrices_BCinvBT_damped);
+  mg::Matrix<VectorType> mg_matrix_BCinvBT_damped(mg_matrices_BCinvBT_damped);
+  Multigrid<VectorType>mg_BCinvBT_damped(mg_matrix_BCinvBT_damped,
+                                                       mg_coarse_BCinvBT_remove_ns_damped,
+                                                       mg_transfer_Schur_complement,
+                                                       mg_smoother_BCinvBT_remove_ns_damped
+                                                       ,
+                                                       mg_smoother_BCinvBT_remove_ns_damped);
+  mg_BCinvBT_damped.set_edge_matrices(mg_interface_BCinvBT_damped,
+                                      mg_interface_BCinvBT_damped);
+  GMGPreconditioner prec_BCinvBT_damped(dof_handler_p,
+                                        mg_BCinvBT_damped,
+                                        mg_transfer_Schur_complement);
 
 
 
@@ -1922,7 +1922,7 @@ namespace aspect
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_BCinvBT,
-                                          prec_BCinvBT_damped
+                                          prec_BCinvBT_damped,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,

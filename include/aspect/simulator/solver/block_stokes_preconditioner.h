@@ -470,7 +470,7 @@ namespace aspect
       private:
         mutable unsigned int n_iterations_;
         const PreconditionerMp &mp_preconditioner;
-        const PreconditionerMp &mp_preonditioner_damped;
+        const PreconditionerMp &mp_preconditioner_damped;
         const bool do_solve_schur_complement;
         const double solver_tolerance;
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
