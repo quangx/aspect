@@ -30,6 +30,7 @@
 #include <aspect/newton.h>
 
 #include <boost/operators.hpp>
+#include <boost/qvm/map_mat_vec.hpp>
 #include <cstdlib>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mg_level_object.h>
@@ -1438,9 +1439,6 @@ namespace aspect
               if (this->get_parameters().use_bfbt)
                 {
 
-                  // smoother_data_Laplace[level].smoothing_range = 15.;
-                  // smoother_data_Laplace[level].degree = 4;
-                  // smoother_data_Laplace[level].eig_cg_n_iterations = 10;
 
                   smoother_data_BCinvBT[level].smoothing_range=15.;
                   smoother_data_BCinvBT[level].degree = 4;
@@ -1461,14 +1459,9 @@ namespace aspect
               if (this->get_parameters().use_bfbt)
                 {
 
-
-                  // smoother_data_Laplace[level].smoothing_range = 1e-3;
-                  // smoother_data_Laplace[level].degree = 8;
-                  // smoother_data_Laplace[level].eig_cg_n_iterations = 100;
-
-                  smoother_data_BCinvBT[level].smoothing_range = 1e-3;
-                  smoother_data_BCinvBT[level].degree = 8;
-                  smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
+//                  smoother_data_BCinvBT[level].smoothing_range = 1e-3;
+//                  smoother_data_BCinvBT[level].degree = 8;
+//                  smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
                 }
               else
                 {
@@ -1577,12 +1570,80 @@ namespace aspect
       {
         mg_coarse_BCinvBT.initialize(mg_smoother_BCinvBT);
 
+    //create coarse grid matrix for direct solve in diag A bfbt imiplementation.
+  //  this is done with unit vector multiplication.
+
+   const unsigned int n_p_level0=dof_handler_p.n_dofs(0);
+    std::cout << "rank " << dealii::Utilities::MPI::this_mpi_process(dof_handler_p.get_triangulation().get_communicator())
+          << " owns " << dof_handler_p.locally_owned_mg_dofs(0).n_elements()
+          << " of " << n_p_level0 << " level-0 pressure DOFs" << std::endl;
+    dealii::LinearAlgebra::distributed::Vector<double> unit_vec, column;
+   mg_matrices_BCinvBT[0].initialize_dof_vector(unit_vec);
+    mg_matrices_BCinvBT[0].initialize_dof_vector(column);
+   dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_mg_dofs(0),
+                                                dof_handler_p.get_triangulation().get_communicator());
+  for(unsigned int i=0;i<n_p_level0;++i)
+    for(unsigned int j=0;j<n_p_level0;++j)
+      sp.add(i,j);
+  sp.compress();
+   dealii::TrilinosWrappers::SparseMatrix Z_coarse(sp);
+   for(unsigned int i=0;i<n_p_level0;++i){
+      unit_vec=0;
+      if(unit_vec.get_partitioner()->in_local_range(i))
+        unit_vec(i)=1.0;
+    unit_vec.update_ghost_values();
+    column=0;
+    mg_matrices_BCinvBT[0].vmult(column,unit_vec);
+    for(unsigned int j=0;j<n_p_level0;++j)
+      if(column.get_partitioner()->in_local_range(j))
+        Z_coarse.set(j,i,column(j));
+    }
+    //pin pressure dof for ns removal
+    if(Z_coarse.locally_owned_range_indices().is_element(0) ){
+      for(unsigned int j=0;j<n_p_level0;++j)
+        Z_coarse.set(0,j,(j==0)?1.0:0.0);
+    }
+    Z_coarse.compress(dealii::VectorOperation::insert);
+    mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
+  
+  
+
+    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
+    mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
+
+
       }
     else
       {
         mg_coarse_Schur.initialize(mg_smoother_Schur);
 
       }
+   const unsigned int n_p_level0=dof_handler_p.n_dofs(0);
+    dealii::LinearAlgebra::distributed::Vector<double> unit_vec, column;
+   mg_matrices_BCinvBT[0].initialize_dof_vector(unit_vec);
+    mg_matrices_BCinvBT[0].initialize_dof_vector(column);
+   dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_mg_dofs(0),
+                                                dof_handler_p.get_triangulation().get_communicator());
+  for(unsigned int i=0;i<n_p_level0;++i)
+    for(unsigned int j=0;j<n_p_level0;++j)
+      sp.add(i,j);
+  sp.compress();
+   dealii::TrilinosWrappers::SparseMatrix Z_coarse(sp);
+   for(unsigned int i=0;i<n_p_level0;++i){
+      unit_vec=0;
+      if(unit_vec.get_partitioner()->in_local_range(i))
+        unit_vec(i)=1.0;
+    unit_vec.update_ghost_values();
+    column=0;
+    mg_matrices_BCinvBT[0].vmult(column,unit_vec);
+    for(unsigned int j=0;j<n_p_level0;++j)
+      if(column.get_partitioner()->in_local_range(j))
+        Z_coarse.set(j,i,column(j));
+    }
+    Z_coarse.compress(dealii::VectorOperation::insert);
+    mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
+  
+  
 
     internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
     mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
@@ -1684,7 +1745,7 @@ namespace aspect
     */
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
-                                     mg_coarse_BCinvBT_remove_ns,
+                                     mg_coarse_BCinvBT_direct_solve,
                                      mg_transfer_Schur_complement,
                                      mg_smoother_BCinvBT_remove_ns,
                                      mg_smoother_BCinvBT_remove_ns);
