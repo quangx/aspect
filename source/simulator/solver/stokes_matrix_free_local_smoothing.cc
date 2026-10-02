@@ -1618,33 +1618,6 @@ namespace aspect
         mg_coarse_Schur.initialize(mg_smoother_Schur);
 
       }
-   const unsigned int n_p_level0=dof_handler_p.n_dofs(0);
-    dealii::LinearAlgebra::distributed::Vector<double> unit_vec, column;
-   mg_matrices_BCinvBT[0].initialize_dof_vector(unit_vec);
-    mg_matrices_BCinvBT[0].initialize_dof_vector(column);
-   dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_mg_dofs(0),
-                                                dof_handler_p.get_triangulation().get_communicator());
-  for(unsigned int i=0;i<n_p_level0;++i)
-    for(unsigned int j=0;j<n_p_level0;++j)
-      sp.add(i,j);
-  sp.compress();
-   dealii::TrilinosWrappers::SparseMatrix Z_coarse(sp);
-   for(unsigned int i=0;i<n_p_level0;++i){
-      unit_vec=0;
-      if(unit_vec.get_partitioner()->in_local_range(i))
-        unit_vec(i)=1.0;
-    unit_vec.update_ghost_values();
-    column=0;
-    mg_matrices_BCinvBT[0].vmult(column,unit_vec);
-    for(unsigned int j=0;j<n_p_level0;++j)
-      if(column.get_partitioner()->in_local_range(j))
-        Z_coarse.set(j,i,column(j));
-    }
-    Z_coarse.compress(dealii::VectorOperation::insert);
-    mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
-  
-  
-
     internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
     mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
 
