@@ -894,7 +894,17 @@ namespace aspect
       mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
       mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
       }
-
+      level_cell_data_laplace.resize(0,n_levels-1);
+      for(unsigned int level=0;level<n_levels;++level){
+        level_cell_data_laplace[level]=level_cell_data[level];
+        auto &visc=level_cell_data_laplace[level].viscosity;
+        for(unsigned int i=0;i<visc.size(0);++i)
+          for(unsigned int j=0;j<visc.size(1);++j)
+            for(unsigned int c=0;c<VectorizedArray<GMGNumberType>::size();++c)
+              if(visc(i,j)[c]>0.)
+                visc(i,j)[c]=std::sqrt(visc(i,j)[c]);
+        mg_matrices_Laplace[level].set_cell_data(level_cell_data_laplace[level]);
+      }
       level_cell_data_damped.resize(0,n_levels-1);
       fill_level_cell_data(level_viscosity_vector_damped,level_cell_data_damped);
       for(unsigned int level=0; level<n_levels; ++level)
@@ -1641,8 +1651,8 @@ namespace aspect
     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
                                      mg_coarse_Laplace,
                                      mg_transfer_Schur_complement,
-                                     mg_smoother_Laplace,
-                                     mg_smoother_Laplace);
+                                     mg_smoother_Laplace_remove_ns,
+                                     mg_smoother_Laplace_remove_ns);
     if(this->get_parameters().use_bfbt)
       mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
     

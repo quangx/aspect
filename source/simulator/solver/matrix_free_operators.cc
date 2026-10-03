@@ -174,8 +174,10 @@ void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number
     velocity.reinit(cell);
     velocity.gather_evaluate(src,EvaluationFlags::values);
     for(const unsigned int q: velocity.quadrature_point_indices()){
-      VectorizedArray<number> eta=constant_per_cell?cell_data->viscosity(cell,0):cell_data->viscosity(cell,q);
-      velocity.submit_value(std::sqrt(eta)*velocity.get_value(q),q);
+      for(unsigned int c=0;c<n_filled;++c)
+        w[c]=std::sqrt(constant_per_cell?cell_data->viscosity(cell,0)[c]:
+                       cell_data->viscosity(cell,q)[c]);
+      velocity.submit_value(w*velocity.get_value(q),q);
     }
     velocity.integrate_scatter(EvaluationFlags::values,dst);
   }
