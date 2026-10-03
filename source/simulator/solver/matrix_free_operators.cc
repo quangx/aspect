@@ -165,7 +165,7 @@ template<int dim, int degree_v, typename number>
 void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number>
 ::local_apply( const dealii::MatrixFree<dim,number> & data,
               dealii::LinearAlgebra::distributed::Vector<number> &dst,
-              const dealii:::LinearAlgebra::distributed::Vector<number> &src,
+              const dealii::LinearAlgebra::distributed::Vector<number> &src,
               const ::std::pair<unsigned int, unsigned int> &cell_range) const
 {
   FEEvaluation<dim,  degree_v,  degree_v+1, dim,  number> velocity(data,0);
@@ -173,7 +173,9 @@ void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number
   for(unsigned int cell=cell_range.first;cell<cell_range.second;++cell){
     velocity.reinit(cell);
     velocity.gather_evaluate(src,EvaluationFlags::values);
+    const unsigned int n_filled=data.n_active_entries_per_cell_batch(cell);
     for(const unsigned int q: velocity.quadrature_point_indices()){
+      VectorizedArray<number> w=0.;
       for(unsigned int c=0;c<n_filled;++c)
         w[c]=std::sqrt(constant_per_cell?cell_data->viscosity(cell,0)[c]:
                        cell_data->viscosity(cell,q)[c]);
