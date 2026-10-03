@@ -777,7 +777,6 @@ namespace aspect
     active_cell_data_damped.is_compressible=this->get_material_model().is_compressible();
 
     active_cell_data_damped.pressure_scaling=this->get_pressure_scaling();
-    A_block_matrix_damped.set_cell_data(active_cell_data_damped);
   
 
     // Store viscosity tables and other data into the active level matrix-free objects.
@@ -907,8 +906,6 @@ namespace aspect
       }
       level_cell_data_damped.resize(0,n_levels-1);
       fill_level_cell_data(level_viscosity_vector_damped,level_cell_data_damped);
-      for(unsigned int level=0; level<n_levels; ++level)
-        mg_matrices_A_block_damped[level].set_cell_data(level_cell_data_damped[level]);
     
 
     {
@@ -1852,7 +1849,6 @@ namespace aspect
 
     A_block_matrix.compute_diagonal();
     lumped_velocity_mass_matrix.compute_diagonal();
-    A_block_matrix_damped.compute_diagonal();
     Schur_complement_block_matrix.compute_diagonal();
     if (this->get_parameters().use_bfbt)
       {
@@ -1869,7 +1865,7 @@ namespace aspect
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       prec_Laplace,
-                                      prec_Laplace_Laplace,
+                                      prec_Laplace,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_lumped_mass_inv,
@@ -2671,12 +2667,6 @@ namespace aspect
                                                   mg_constrained_dofs_A_block,
                                                   level,
                                                   selected_dof_handler);
-           mg_matrices_A_block_damped[level].clear();
-           mg_matrices_A_block_damped[level].initialize
-                       (matrix_free_level,
-                        mg_constrained_dofs_A_block,
-                        level,
-                        selected_dof_handler);
           }
           {
             mg_matrices_Schur_complement[level].clear();
@@ -2722,6 +2712,7 @@ namespace aspect
 
     for (unsigned int level=0; level < this->get_triangulation().n_global_levels(); ++level)
       {
+        mg_matrices_A_block[level].compute_diagonal();
         if (this->get_parameters().use_bfbt)
           {
              mg_matrices_Laplace[level].compute_diagonal();
