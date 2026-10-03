@@ -1413,6 +1413,8 @@ namespace aspect
      using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
      mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
      mg_smoother_Laplace(4);
+   internal::MGSmootherRemoveNullspace<VectorType,mg::SmootherRelaxation<MSmootherLaplaceType,VectorType> > mg_smoother_Laplace_remove_ns;
+   mg_smoother_Laplace_remove_ns.initialize(mg_smoother_Laplace);
 
     using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
     mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>
@@ -1565,6 +1567,8 @@ namespace aspect
 
     //Pressure laplace for diag BFBT GMG
      MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
+     internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_Laplace_remove_ns;
+  mg_coarse_Laplace_remove_ns.initialize(mg_coarse_Laplace);
     if(this->get_parameters().use_bfbt)
      mg_coarse_Laplace.initialize(mg_smoother_Laplace);
 
@@ -1715,10 +1719,10 @@ namespace aspect
     //Diag-BFBT pressure Laplace GMG
     
     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
-                                     mg_coarse_Laplace,
+                                     mg_coarse_Laplace_remove_ns,
                                      mg_transfer_Schur_complement,
-                                     mg_smoother_Laplace,
-                                     mg_smoother_Laplace);
+                                     mg_smoother_Laplace_remove_ns,
+                                     mg_smoother_Laplace_remove_ns);
     if(this->get_parameters().use_bfbt)
       mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
     
@@ -2045,8 +2049,19 @@ std::vector<GMGNumberType> values_on_quad_p(quadrature_formula_laplace.size());
 
 level_cell_data_laplace.resize(0, n_levels-1);
 
-for (unsigned int level = 0; level < n_levels; ++level)
+    
+      for (unsigned int level = 0; level < n_levels; ++level)
   {
+    dealii::IndexSet locally_relevant_p_level;
+    dealii::DoFTools::extract_locally_relevant_level_dofs(dof_handler_p, level, locally_relevant_p_level);
+
+    dealii::LinearAlgebra::distributed::Vector<GMGNumberType> level_laplace_coefficient_ghosted;
+    level_laplace_coefficient_ghosted.reinit(dof_handler_p.locally_owned_mg_dofs(level),
+                                             locally_relevant_p_level,
+                                             dof_handler_p.get_triangulation().get_communicator());
+    level_laplace_coefficient_ghosted.copy_locally_owned_data_from(level_laplace_coefficient[level]);
+    level_laplace_coefficient_ghosted.update_ghost_values();
+
     level_cell_data_laplace[level].is_compressible = this->get_material_model().is_compressible();
     level_cell_data_laplace[level].pressure_scaling = this->get_pressure_scaling();
 
@@ -2065,7 +2080,7 @@ for (unsigned int level = 0; level < n_levels; ++level)
 
             fe_values_p_for_laplace.reinit(p_cell);
             p_cell->get_mg_dof_indices(local_dof_indices_p);
-            fe_values_p_for_laplace.get_function_values(level_laplace_coefficient[level],
+            fe_values_p_for_laplace.get_function_values(level_laplace_coefficient_ghosted,   // <-- the ghosted one, not level_laplace_coefficient[level]
                                                         local_dof_indices_p,
                                                         values_on_quad_p);
 
@@ -2076,9 +2091,6 @@ for (unsigned int level = 0; level < n_levels; ++level)
 
     mg_matrices_Laplace[level].set_cell_data(level_cell_data_laplace[level]);
   }
-    
-    
-      
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
 
