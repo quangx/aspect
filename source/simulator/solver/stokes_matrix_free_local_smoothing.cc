@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/mg_level_object.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/table_indices.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/base/types.h>
@@ -177,7 +178,6 @@ namespace aspect
     template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType,class SchurComplementMatrixType, class VectorType, class PreconditionerMp>
     DiagBFBT<StokesMatrixType, AOperatorType, BOperatorType, BTOperatorType, SchurComplementMatrixType, VectorType, PreconditionerMp>::DiagBFBT(
       const PreconditionerMp &mp_preconditioner,
-      const PreconditionerMp &mp_preconditioner_damped,
       const bool do_solve_schur_complement,
       const double solver_tolerance,
       const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
@@ -189,7 +189,6 @@ namespace aspect
       const SchurComplementMatrixType &mp_matrix)
       : n_iterations_(0),
         mp_preconditioner(mp_preconditioner),
-        mp_preconditioner_damped(mp_preconditioner_damped),
         do_solve_schur_complement(do_solve_schur_complement),
         solver_tolerance(solver_tolerance),
         diag_A_inv(diag_A_inv),
@@ -284,7 +283,7 @@ namespace aspect
           ptmp = 0;
 
           //try richardson for BC^{-1}B^T
-          mp_preconditioner_damped.vmult(ptmp,rhs1);
+          mp_preconditioner.vmult(ptmp,rhs1);
           ptmp.add(-ptmp.mean_value());
 
 
@@ -614,9 +613,9 @@ namespace aspect
     //diag A bfbt - dampen contributions from velocity dofs touching boundary
     //  by scaling the viscosity values.
 
-    const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
+    //const double a_r=std::pow(2.0,static_cast<double>(this->get_triangulation().n_global_levels()-1)-4.0);
   
-//    const double a_r=8.0;
+    const double a_r=1.0;
     dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
 
     {
@@ -788,7 +787,7 @@ namespace aspect
 
     A_block_matrix.set_cell_data(active_cell_data);
     Schur_complement_block_matrix.set_cell_data(active_cell_data);
-    // Laplace_block_matrix.set_cell_data(active_cell_data);
+     Laplace_block_matrix.set_cell_data(active_cell_data);
 
 
 
@@ -890,7 +889,7 @@ namespace aspect
       // Store viscosity tables and other data into the multigrid level matrix-free objects.
       mg_matrices_A_block[level].set_cell_data (level_cell_data[level]);
       mg_matrices_Schur_complement[level].set_cell_data (level_cell_data[level]);
-      // mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
+       mg_matrices_Laplace[level].set_cell_data(level_cell_data[level]);
       mg_matrices_BT_block[level].set_cell_data(level_cell_data[level]);
       mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
       }
@@ -1411,9 +1410,9 @@ namespace aspect
     mg::SmootherRelaxation<MSmootherType, VectorType>
     mg_smoother_Schur(4);
 
-    // using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
-    // mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
-    // mg_smoother_Laplace(4);
+     using MSmootherLaplaceType = PreconditionChebyshev<GMGLaplaceType,VectorType>;
+     mg::SmootherRelaxation<MSmootherLaplaceType, VectorType>
+     mg_smoother_Laplace(4);
 
     using MSmootherBCinvBTType = PreconditionChebyshev<GMGDiagonalBCinvBTType,VectorType>;
     mg::SmootherRelaxation<MSmootherBCinvBTType, VectorType>
@@ -1423,11 +1422,11 @@ namespace aspect
     mg_smoother_BCinvBT_remove_ns.initialize(mg_smoother_BCinvBT);
     {
       MGLevelObject<typename MSmootherType::AdditionalData> smoother_data_Schur;
-      // MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
+       MGLevelObject<typename MSmootherLaplaceType::AdditionalData> smoother_data_Laplace;
       MGLevelObject<typename MSmootherBCinvBTType::AdditionalData> smoother_data_BCinvBT;
 
       smoother_data_Schur.resize(0, this->get_triangulation().n_global_levels()-1);
-      // smoother_data_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
+       smoother_data_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
       smoother_data_BCinvBT.resize(0, this->get_triangulation().n_global_levels()-1);
 
       for (unsigned int level = 0; level<this->get_triangulation().n_global_levels(); ++level)
@@ -1439,10 +1438,13 @@ namespace aspect
               if (this->get_parameters().use_bfbt)
                 {
 
+                  smoother_data_Laplace[level].smoothing_range=15.;
+                  smoother_data_Laplace[level].degree = 4;
+                  smoother_data_Laplace[level].eig_cg_n_iterations=10;
 
-                  smoother_data_BCinvBT[level].smoothing_range=15.;
-                  smoother_data_BCinvBT[level].degree = 4;
-                  smoother_data_BCinvBT[level].eig_cg_n_iterations=10;
+                  //smoother_data_BCinvBT[level].smoothing_range=15.;
+                  //smoother_data_BCinvBT[level].degree = 4;
+                  //smoother_data_BCinvBT[level].eig_cg_n_iterations=10;
                 }
               else
                 {
@@ -1459,6 +1461,10 @@ namespace aspect
               if (this->get_parameters().use_bfbt)
                 {
 
+
+                  smoother_data_Laplace[level].smoothing_range = 1e-3;
+                  smoother_data_Laplace[level].degree = 8;
+                  smoother_data_Laplace[level].eig_cg_n_iterations=100;
 //                  smoother_data_BCinvBT[level].smoothing_range = 1e-3;
 //                  smoother_data_BCinvBT[level].degree = 8;
 //                  smoother_data_BCinvBT[level].eig_cg_n_iterations=100;
@@ -1474,7 +1480,7 @@ namespace aspect
           if (this->get_parameters().use_bfbt)
             {
 
-              // smoother_data_Laplace[level].preconditioner = mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
+               smoother_data_Laplace[level].preconditioner = mg_matrices_Laplace[level].get_matrix_diagonal_inverse();
               smoother_data_BCinvBT[level].preconditioner = mg_matrices_BCinvBT[level].get_matrix_diagonal_inverse();
             }
           else
@@ -1485,7 +1491,7 @@ namespace aspect
         }
       if (this->get_parameters().use_bfbt)
         {
-          // mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
+           mg_smoother_Laplace.initialize(mg_matrices_Laplace,smoother_data_Laplace);
           mg_smoother_BCinvBT.initialize(mg_matrices_BCinvBT,smoother_data_BCinvBT);
         }
       else
@@ -1515,7 +1521,7 @@ namespace aspect
 
         if (this->get_parameters().use_bfbt)
           {
-            // mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
+             mg_matrices_Laplace[level].initialize_dof_vector(temp_pressure);
             mg_matrices_BCinvBT[level].initialize_dof_vector(temp_pressure);
           }
         else
@@ -1527,7 +1533,7 @@ namespace aspect
         mg_smoother_A[level].estimate_eigenvalues(temp_velocity);
         if (this->get_parameters().use_bfbt)
           {
-            // mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
+             mg_smoother_Laplace[level].estimate_eigenvalues(temp_pressure);
             auto eigenvalue_info=mg_smoother_BCinvBT[level].estimate_eigenvalues(temp_pressure);
             this->get_pcout()<<" level: "<<level<<" lambda_min: "<<
                              eigenvalue_info.min_eigenvalue_estimate<<", lambda_max:"
@@ -1558,9 +1564,9 @@ namespace aspect
 
 
     //Pressure laplace for diag BFBT GMG
-    // MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
-    //if(this->get_parameters().use_bfbt)
-    // mg_coarse_Laplace.initialize(mg_smoother_Laplace);
+     MGCoarseGridApplySmoother<VectorType> mg_coarse_Laplace;
+    if(this->get_parameters().use_bfbt)
+     mg_coarse_Laplace.initialize(mg_smoother_Laplace);
 
     //Diag Bdiag(A)^{-1}B^T for diag A BFBT GMG
 
@@ -1573,43 +1579,43 @@ namespace aspect
     //create coarse grid matrix for direct solve in diag A bfbt imiplementation.
   //  this is done with unit vector multiplication.
 
-   const unsigned int n_p_level0=dof_handler_p.n_dofs(0);
-    std::cout << "rank " << dealii::Utilities::MPI::this_mpi_process(dof_handler_p.get_triangulation().get_communicator())
-          << " owns " << dof_handler_p.locally_owned_mg_dofs(0).n_elements()
-          << " of " << n_p_level0 << " level-0 pressure DOFs" << std::endl;
-    dealii::LinearAlgebra::distributed::Vector<double> unit_vec, column;
-   mg_matrices_BCinvBT[0].initialize_dof_vector(unit_vec);
-    mg_matrices_BCinvBT[0].initialize_dof_vector(column);
-   dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_mg_dofs(0),
-                                                dof_handler_p.get_triangulation().get_communicator());
-  for(unsigned int i=0;i<n_p_level0;++i)
-    for(unsigned int j=0;j<n_p_level0;++j)
-      sp.add(i,j);
-  sp.compress();
-   dealii::TrilinosWrappers::SparseMatrix Z_coarse(sp);
-   for(unsigned int i=0;i<n_p_level0;++i){
-      unit_vec=0;
-      if(unit_vec.get_partitioner()->in_local_range(i))
-        unit_vec(i)=1.0;
-    unit_vec.update_ghost_values();
-    column=0;
-    mg_matrices_BCinvBT[0].vmult(column,unit_vec);
-    for(unsigned int j=0;j<n_p_level0;++j)
-      if(column.get_partitioner()->in_local_range(j))
-        Z_coarse.set(j,i,column(j));
-    }
-    //pin pressure dof for ns removal
-    if(Z_coarse.locally_owned_range_indices().is_element(0) ){
-      for(unsigned int j=0;j<n_p_level0;++j)
-        Z_coarse.set(0,j,(j==0)?1.0:0.0);
-    }
-    Z_coarse.compress(dealii::VectorOperation::insert);
-    mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
+   //const unsigned int n_p_level0=dof_handler_p.n_dofs(0);
+   // std::cout << "rank " << dealii::Utilities::MPI::this_mpi_process(dof_handler_p.get_triangulation().get_communicator())
+   //       << " owns " << dof_handler_p.locally_owned_mg_dofs(0).n_elements()
+   //       << " of " << n_p_level0 << " level-0 pressure DOFs" << std::endl;
+   // dealii::LinearAlgebra::distributed::Vector<double> unit_vec, column;
+   //mg_matrices_BCinvBT[0].initialize_dof_vector(unit_vec);
+   // mg_matrices_BCinvBT[0].initialize_dof_vector(column);
+   //dealii::TrilinosWrappers::SparsityPattern sp(dof_handler_p.locally_owned_mg_dofs(0),
+   //                                             dof_handler_p.get_triangulation().get_communicator());
+  //ror(unsigned int i=0;i<n_p_level0;++i)
+   // for(unsigned int j=0;j<n_p_level0;++j)
+   //   sp.add(i,j);
+  //sp.compress();
+   //dealii::TrilinosWrappers::SparseMatrix Z_coarse(sp);
+   //for(unsigned int i=0;i<n_p_level0;++i){
+   //   unit_vec=0;
+   //   if(unit_vec.get_partitioner()->in_local_range(i))
+   //     unit_vec(i)=1.0;
+   // unit_vec.update_ghost_values();
+   // column=0;
+   // mg_matrices_BCinvBT[0].vmult(column,unit_vec);
+   // for(unsigned int j=0;j<n_p_level0;++j)
+   //   if(column.get_partitioner()->in_local_range(j))
+   //     Z_coarse.set(j,i,column(j));
+   // }
+   // //pin pressure dof for ns removal
+   // if(Z_coarse.locally_owned_range_indices().is_element(0) ){
+   //   for(unsigned int j=0;j<n_p_level0;++j)
+   //     Z_coarse.set(0,j,(j==0)?1.0:0.0);
+   // }
+   // Z_coarse.compress(dealii::VectorOperation::insert);
+   // mg_coarse_BCinvBT_direct_solve.initialize(Z_coarse);
   
   
 
-    internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
-    mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
+    //internal::MGCoarseGridApplySmootherRemoveNullspace<VectorType> mg_coarse_BCinvBT_remove_ns;
+    //mg_coarse_BCinvBT_remove_ns.initialize(mg_coarse_BCinvBT);
 
 
       }
@@ -1651,14 +1657,14 @@ namespace aspect
 
     // Laplace for diag BFBT
 
-    // MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
-    // if(this->get_parameters().use_bfbt){
+     MGLevelObject<MatrixFreeOperators::MGInterfaceOperator<GMGLaplaceType>> mg_interface_matrices_Laplace;
+     if(this->get_parameters().use_bfbt){
 
-    // mg_interface_matrices_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
-    // for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
-    //   mg_interface_matrices_Laplace[level].initialize(mg_matrices_Laplace[level]);
-    // }
-    // mg::Matrix<VectorType> mg_interface_Laplace(mg_interface_matrices_Laplace);
+     mg_interface_matrices_Laplace.resize(0, this->get_triangulation().n_global_levels()-1);
+     for (unsigned int level=0; level<this->get_triangulation().n_global_levels(); ++level)
+       mg_interface_matrices_Laplace[level].initialize(mg_matrices_Laplace[level]);
+     }
+     mg::Matrix<VectorType> mg_interface_Laplace(mg_interface_matrices_Laplace);
 
 
     // BCinvBT for diag BFBT
@@ -1688,7 +1694,7 @@ namespace aspect
     // MG Matrix
     mg::Matrix<VectorType> mg_matrix_A(mg_matrices_A_block);
     mg::Matrix<VectorType> mg_matrix_Schur(mg_matrices_Schur_complement);
-    // mg::Matrix<VectorType> mg_matrix_Laplace(mg_matrices_Laplace);
+     mg::Matrix<VectorType> mg_matrix_Laplace(mg_matrices_Laplace);
     mg::Matrix<VectorType> mg_matrix_BCinvBT(mg_matrices_BCinvBT);
     // MG object
     // ABlock GMG
@@ -1707,7 +1713,7 @@ namespace aspect
                                    mg_smoother_Schur);
 
     //Diag-BFBT pressure Laplace GMG
-    /*
+    
     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
                                      mg_coarse_Laplace,
                                      mg_transfer_Schur_complement,
@@ -1715,7 +1721,7 @@ namespace aspect
                                      mg_smoother_Laplace);
     if(this->get_parameters().use_bfbt)
       mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
-    */
+    
     //Diag A BFBT BCinvBT GMG
     Multigrid<VectorType> mg_BCinvBT(mg_matrix_BCinvBT,
                                      mg_coarse_BCinvBT_direct_solve,
@@ -1736,7 +1742,7 @@ namespace aspect
     using GMGPreconditioner = PreconditionMG<dim, VectorType, MGTransferMF<dim,GMGNumberType>>;
     GMGPreconditioner prec_A(dof_handler_v, mg_A, mg_transfer_A_block);
     GMGPreconditioner prec_Schur(dof_handler_p, mg_Schur, mg_transfer_Schur_complement);
-    //GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
+    GMGPreconditioner prec_Laplace(dof_handler_p, mg_Laplace, mg_transfer_Schur_complement);
     GMGPreconditioner prec_BCinvBT(dof_handler_p, mg_BCinvBT, mg_transfer_Schur_complement);
 
   //damped BC_invBT
@@ -2008,6 +2014,71 @@ namespace aspect
 
         bc_invbt.set_up(B_block,BT_block,diag_A_inv,active_cell_data, constraints_v, constraints_p, this->get_mapping(), dealii::numbers::invalid_unsigned_int);
         bc_invbt.compute_diagonal();
+        const auto &diag_BCinvBT_inv=bc_invbt.get_matrix_diagonal_inverse()->get_vector();
+        MatrixFreeStokesOperators::OperatorCellData<dim,double> unit_cell_data;
+        unit_cell_data.is_compressible=this->get_material_model().is_compressible();
+        unit_cell_data.pressure_scaling=this->get_pressure_scaling();
+        const unsigned int n_cells_p=stokes_matrix.get_matrix_free()->n_cell_batches();
+        unit_cell_data.viscosity.reinit(TableIndices<2> (n_cells_p,1));
+        for(unsigned int c=0;c<n_cells_p;++c)
+          unit_cell_data.viscosity(c,0)=1.0;
+       Laplace_block_matrix.set_cell_data(unit_cell_data);
+       Laplace_block_matrix.compute_diagonal();
+        const auto &diag_L_unit_inv=Laplace_block_matrix.get_matrix_diagonal_inverse()->get_vector();
+        dealii::LinearAlgebra::distributed::Vector<double> laplace_coefficient;
+        laplace_coefficient.reinit(diag_BCinvBT_inv);
+        for(unsigned int i=0;i<laplace_coefficient.locally_owned_size();++i){
+          const double pressure_scaling=this->get_pressure_scaling();
+          laplace_coefficient.local_element(i)=pressure_scaling*pressure_scaling*diag_BCinvBT_inv.local_element(i)/diag_L_unit_inv.local_element(i);
+        }
+
+    //use mg L2 projection on the laplace coefficients
+MGLevelObject<dealii::LinearAlgebra::distributed::Vector<GMGNumberType>> level_laplace_coefficient;
+const unsigned int n_levels=this->get_triangulation().n_global_levels();
+const dealii::QGauss<dim> quadrature_formula_laplace(fe_p.degree+1);
+level_laplace_coefficient.resize(0, n_levels-1);
+mg_transfer_Schur_complement.interpolate_to_mg(dof_handler_p, level_laplace_coefficient, laplace_coefficient);
+
+dealii::FEValues<dim> fe_values_p_for_laplace(this->get_mapping(), fe_p, quadrature_formula_laplace, dealii::update_values);
+std::vector<types::global_dof_index> local_dof_indices_p(fe_p.dofs_per_cell);
+std::vector<GMGNumberType> values_on_quad_p(quadrature_formula_laplace.size());
+
+level_cell_data_laplace.resize(0, n_levels-1);
+
+for (unsigned int level = 0; level < n_levels; ++level)
+  {
+    level_cell_data_laplace[level].is_compressible = this->get_material_model().is_compressible();
+    level_cell_data_laplace[level].pressure_scaling = this->get_pressure_scaling();
+
+    const unsigned int n_cells_level = mg_matrices_Laplace[level].get_matrix_free()->n_cell_batches();
+    level_cell_data_laplace[level].viscosity.reinit(TableIndices<2>(n_cells_level, quadrature_formula_laplace.size()));
+
+    for (unsigned int cell = 0; cell < n_cells_level; ++cell)
+      {
+        const unsigned int n_components_filled =
+          mg_matrices_Laplace[level].get_matrix_free()->n_active_entries_per_cell_batch(cell);
+
+        for (unsigned int i = 0; i < n_components_filled; ++i)
+          {
+            typename DoFHandler<dim>::level_cell_iterator p_cell =
+              mg_matrices_Laplace[level].get_matrix_free()->get_cell_iterator(cell, i, /*dofh*/1);
+
+            fe_values_p_for_laplace.reinit(p_cell);
+            p_cell->get_mg_dof_indices(local_dof_indices_p);
+            fe_values_p_for_laplace.get_function_values(level_laplace_coefficient[level],
+                                                        local_dof_indices_p,
+                                                        values_on_quad_p);
+
+            for (unsigned int q = 0; q < quadrature_formula_laplace.size(); ++q)
+              level_cell_data_laplace[level].viscosity(cell, q)[i] = values_on_quad_p[q];
+          }
+      }
+
+    mg_matrices_Laplace[level].set_cell_data(level_cell_data_laplace[level]);
+  }
+    
+    
+      
 
         typename dealii::PreconditionChebyshev <MatrixFreeStokesOperators::DiagonalBC_invBTOperator<dim, velocity_degree, BBlockOperatorType, BTBlockOperatorType, double>,VectorType>::AdditionalData chebyshev_data;
 
@@ -2024,8 +2095,7 @@ namespace aspect
         using DiagBFBTType = internal::DiagBFBT<StokesMatrixType, ABlockMatrixType, BBlockOperatorType, BTBlockOperatorType, SchurComplementMatrixType, VectorType, GMGPreconditioner>;
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
-                                      prec_BCinvBT,
-                                      prec_BCinvBT_damped,
+                                      prec_Laplace,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_A_inv,
@@ -2037,8 +2107,7 @@ namespace aspect
                                       Schur_complement_block_matrix);
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
-                                          prec_BCinvBT,
-                                          prec_BCinvBT_damped,
+                                          prec_Laplace,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_A_inv,
@@ -2658,11 +2727,11 @@ namespace aspect
 
     //Laplace block matrix
 
-    //{
-    //  Laplace_block_matrix.clear();
-    //  const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
-    //  Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
-    //}
+    {
+      Laplace_block_matrix.clear();
+      const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
+      Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
+    }
 
     // Create GMG matrices and constraints for each multigrid level
     {
@@ -2675,8 +2744,8 @@ namespace aspect
       mg_matrices_A_block_damped.clear_elements();
       mg_matrices_A_block_damped.resize(0,n_levels-1);
      
-      // mg_matrices_Laplace.clear_elements();
-      // mg_matrices_Laplace.resize(0,n_levels-1);
+       mg_matrices_Laplace.clear_elements();
+       mg_matrices_Laplace.resize(0,n_levels-1);
       mg_matrices_BCinvBT.clear_elements();
       mg_matrices_BCinvBT.resize(0, n_levels-1);
       mg_matrices_BCinvBT_damped.clear_elements();
@@ -2842,14 +2911,14 @@ namespace aspect
                                                            level,
                                                            selected_dof_handler);
           }
-          // {
-          //   mg_matrices_Laplace[level].clear();
-          //   const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
-          //   mg_matrices_Laplace[level].initialize(matrix_free_level,
-          //                                         mg_constrained_dofs_Schur_complement,
-          //                                         level,
-          //                                         selected_dof_handler);
-          // }
+           {
+             mg_matrices_Laplace[level].clear();
+             const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
+             mg_matrices_Laplace[level].initialize(matrix_free_level,
+                                                   mg_constrained_dofs_Schur_complement,
+                                                   level,
+                                                   selected_dof_handler);
+           }
           {
             mg_matrices_B_block[level].initialize(matrix_free_level);
             mg_matrices_BT_block[level].initialize(matrix_free_level);
@@ -2881,7 +2950,7 @@ namespace aspect
         mg_matrices_A_block[level].compute_diagonal();
         if (this->get_parameters().use_bfbt)
           {
-            // mg_matrices_Laplace[level].compute_diagonal();
+             mg_matrices_Laplace[level].compute_diagonal();
             const auto &level_diag_A_inv=mg_matrices_A_block[level].get_matrix_diagonal_inverse()->get_vector();
             mg_matrices_BCinvBT[level].set_up(mg_matrices_B_block[level],
                                               mg_matrices_BT_block[level],
