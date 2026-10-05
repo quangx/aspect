@@ -714,50 +714,6 @@ namespace aspect
     };
 
 
-    template<int dim, int degree_v,class BOperatorType, class BTOperatorType, typename number>
-    class DiagonalBC_invBTOperator: public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
-    {
-      public:
-        // DiagonalBC_invBTOperator(const StokesMatrixType &system_matrix,
-        //                          const BOperatorType &B_operator,
-        //                          const BTOperatorType &BT_operator,
-        //                          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-        //                          const OperatorCellData<dim, number> &cell_data);
-        DiagonalBC_invBTOperator()=default;
-        void set_up(const BOperatorType &B_operator,
-                    const BTOperatorType &BT_operator,
-                    const dealii::LinearAlgebra::distributed::Vector<double>  &diag_A_inv,
-                    const OperatorCellData<dim, number> &cell_data,
-                    const dealii::AffineConstraints<double> &constraints_v,
-                    const dealii::AffineConstraints<double> &constraints_p,
-
-                    const dealii::Mapping<dim> &mapping,
-                    unsigned int level
-                   );
-
-        void compute_diagonal() override;
-
-        void assemble_sparse_matrix(
-
-
-          dealii::TrilinosWrappers::SparseMatrix &B,
-          unsigned int level
-        ) const;
-
-        dealii::LinearAlgebra::distributed::Vector<double> compute_exact_diagonal(dealii::TrilinosWrappers::SparseMatrix &A) const;
-
-      private:
-        void apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst,
-                       const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
-        std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BC_invBTOperator;
-        const BOperatorType *B_operator=nullptr;
-        const dealii::LinearAlgebra::distributed::Vector<double> *diag_A_inv=nullptr;
-        const OperatorCellData<dim,number> *cell_data=nullptr;
-        const dealii::AffineConstraints<double> *constraints_p=nullptr;
-        const dealii::AffineConstraints<double> *constraints_v=nullptr;
-        const dealii::Mapping<dim> *mapping=nullptr;
-        unsigned int level=dealii::numbers::invalid_unsigned_int;
-    };
 
     template <typename VectorType>
     class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
