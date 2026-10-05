@@ -715,33 +715,6 @@ namespace aspect
 
 
 
-    template <typename VectorType>
-    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
-    {
-      public:
-        void operator()(const unsigned int level,
-                        VectorType &dst,
-                        const VectorType &src) const override;
-        void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
-      private:
-        dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
-    };
-
-    template<typename VectorType>
-    class MGCoarseGridDirectSolve:public dealii::MGCoarseGridBase<VectorType>
-    {
-      public:
-        void operator()(const unsigned int level,
-                        VectorType &dst,
-                        const VectorType &src) const override;
-        void initialize(const dealii::TrilinosWrappers::SparseMatrix &coarse_matrix);
-
-      private:
-        //might not be necessary to have a solver control for a direct solve.
-        std::unique_ptr<dealii::SolverControl> solver_control;
-        std::unique_ptr<dealii::TrilinosWrappers::SolverDirect> direct_solver;
-
-    };
 
 
 
