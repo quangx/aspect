@@ -152,69 +152,73 @@ namespace aspect
   //class to lump velocity mass matrix for weighted BFBT by Rudi et al (2017).
   template<int dim,int degree_v, typename number>
   MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,degree_v,number>::LumpedVelocityMassOperator():
-  MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
   {}
 
   template<int dim, int degree_v, typename number>
   void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number>::set_cell_data(const OperatorCellData<dim, number> &data)
-{
-  this->cell_data=&data;
-}
-
-template<int dim, int degree_v, typename number>
-void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number>
-::local_apply( const dealii::MatrixFree<dim,number> & data,
-              dealii::LinearAlgebra::distributed::Vector<number> &dst,
-              const dealii::LinearAlgebra::distributed::Vector<number> &src,
-              const ::std::pair<unsigned int, unsigned int> &cell_range) const
-{
-  FEEvaluation<dim,  degree_v,  degree_v+1, dim,  number> velocity(data,0);
-  const bool constant_per_cell(cell_data->viscosity.size(1)==1);
-  for(unsigned int cell=cell_range.first;cell<cell_range.second;++cell){
-    velocity.reinit(cell);
-    velocity.gather_evaluate(src,EvaluationFlags::values);
-    const unsigned int n_filled=data.n_active_entries_per_cell_batch(cell);
-    for(const unsigned int q: velocity.quadrature_point_indices()){
-      VectorizedArray<number> w=0.;
-      for(unsigned int c=0;c<n_filled;++c)
-        w[c]=std::sqrt(constant_per_cell?cell_data->viscosity(cell,0)[c]:
-                       cell_data->viscosity(cell,q)[c]);
-      velocity.submit_value(w*velocity.get_value(q),q);
-    }
-    velocity.integrate_scatter(EvaluationFlags::values,dst);
+  {
+    this->cell_data=&data;
   }
-}
 
-template<int dim, int degree_v, typename number>
-void
-MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v,  number>
-::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst, const dealii::LinearAlgebra::distributed::Vector<number> &src) const
-{
-  MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::
-  data->cell_loop(&LumpedVelocityMassOperator::local_apply, this, dst,src);
-}
-
-template<int dim, int degree_v, typename number>
-void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v,  number>::compute_diagonal(){
-  Assert(this->cell_data!=nullptr,ExcNotInitialized());
-  this->inverse_diagonal_entries=std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
-  dealii::LinearAlgebra::distributed::Vector<number> &inverse_diagonal=
-  this->inverse_diagonal_entries->get_vector();
-  this->data->initialize_dof_vector(inverse_diagonal);
-  dealii::LinearAlgebra::distributed::Vector<number> row_sums;
-  this->data->initialize_dof_vector(row_sums);
-  inverse_diagonal=number(1.0);
-  this->vmult(row_sums,inverse_diagonal);
-  this->set_constrained_entries_to_one(row_sums);
-
-  for(unsigned int i=0;i<inverse_diagonal.locally_owned_size();++i){
-    Assert(row_sums.local_element(i)>0.,
-           ExcMessage("Lumped velocity mass matrix entries must be positive."));
-    inverse_diagonal.local_element(i)=1./row_sums.local_element(i);
+  template<int dim, int degree_v, typename number>
+  void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v, number>
+  ::local_apply( const dealii::MatrixFree<dim,number> &data,
+                 dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                 const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                 const ::std::pair<unsigned int, unsigned int> &cell_range) const
+  {
+    FEEvaluation<dim,  degree_v,  degree_v+1, dim,  number> velocity(data,0);
+    const bool constant_per_cell(cell_data->viscosity.size(1)==1);
+    for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
+      {
+        velocity.reinit(cell);
+        velocity.gather_evaluate(src,EvaluationFlags::values);
+        const unsigned int n_filled=data.n_active_entries_per_cell_batch(cell);
+        for (const unsigned int q: velocity.quadrature_point_indices())
+          {
+            VectorizedArray<number> w=0.;
+            for (unsigned int c=0; c<n_filled; ++c)
+              w[c]=std::sqrt(constant_per_cell?cell_data->viscosity(cell,0)[c]:
+                             cell_data->viscosity(cell,q)[c]);
+            velocity.submit_value(w*velocity.get_value(q),q);
+          }
+        velocity.integrate_scatter(EvaluationFlags::values,dst);
+      }
   }
-  inverse_diagonal.update_ghost_values();
 
-}
+  template<int dim, int degree_v, typename number>
+  void
+  MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v,  number>
+  ::apply_add(dealii::LinearAlgebra::distributed::Vector<number> &dst, const dealii::LinearAlgebra::distributed::Vector<number> &src) const
+  {
+    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::
+    data->cell_loop(&LumpedVelocityMassOperator::local_apply, this, dst,src);
+  }
+
+  template<int dim, int degree_v, typename number>
+  void MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, degree_v,  number>::compute_diagonal()
+  {
+    Assert(this->cell_data!=nullptr,ExcNotInitialized());
+    this->inverse_diagonal_entries=std::make_shared<DiagonalMatrix<dealii::LinearAlgebra::distributed::Vector<number>>>();
+    dealii::LinearAlgebra::distributed::Vector<number> &inverse_diagonal=
+      this->inverse_diagonal_entries->get_vector();
+    this->data->initialize_dof_vector(inverse_diagonal);
+    dealii::LinearAlgebra::distributed::Vector<number> row_sums;
+    this->data->initialize_dof_vector(row_sums);
+    inverse_diagonal=number(1.0);
+    this->vmult(row_sums,inverse_diagonal);
+    this->set_constrained_entries_to_one(row_sums);
+
+    for (unsigned int i=0; i<inverse_diagonal.locally_owned_size(); ++i)
+      {
+        Assert(row_sums.local_element(i)>0.,
+               ExcMessage("Lumped velocity mass matrix entries must be positive."));
+        inverse_diagonal.local_element(i)=1./row_sums.local_element(i);
+      }
+    inverse_diagonal.update_ghost_values();
+
+  }
 
   template <int dim, int degree_v, typename number>
   MatrixFreeStokesOperators::StokesOperator<dim,degree_v,number>::StokesOperator ()

@@ -210,7 +210,7 @@ namespace aspect
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.
        */
       MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data;
-      
+
       MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data_damped;
 
       /**
