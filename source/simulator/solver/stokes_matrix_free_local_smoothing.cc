@@ -37,6 +37,7 @@
 #include <deal.II/base/table_indices.h>
 #include <deal.II/base/template_constraints.h>
 #include <deal.II/base/types.h>
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/solver_control.h>
 #include <deal.II/lac/trilinos_solver.h>
@@ -138,39 +139,37 @@ namespace aspect
       return return_op;
     }
 
+   template<class BOperatorType, class BTOperatorType>
+   void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                                                                const dealii::LinearAlgebra::distributed::Vector<double> &src) const
+   {
+     dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
+     dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
 
-    template<class BOperatorType, class BTOperatorType>
-    void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
-                                                                 const dealii::LinearAlgebra::distributed::Vector<double> &src) const
-    {
-      dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
-      dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
+     const auto &B_matrix_free=*B_operator.get_matrix_free();
+     block_src.reinit(2);
+     block_dst.reinit(2);
 
-      const auto &B_matrix_free=*B_operator.get_matrix_free();
-      block_src.reinit(2);
-      block_dst.reinit(2);
+     B_matrix_free.initialize_dof_vector(block_src.block(0),0);
+     B_matrix_free.initialize_dof_vector(block_src.block(1),1);
 
-      B_matrix_free.initialize_dof_vector(block_src.block(0),0);
-      B_matrix_free.initialize_dof_vector(block_src.block(1),1);
+     B_matrix_free.initialize_dof_vector(block_dst.block(0),0);
+     B_matrix_free.initialize_dof_vector(block_dst.block(1),1);
 
-      B_matrix_free.initialize_dof_vector(block_dst.block(0),0);
-      B_matrix_free.initialize_dof_vector(block_dst.block(1),1);
+     block_src.block(1)=src;
+     block_src.block(0)=0;
+     block_dst=0;
+     BT_operator.vmult(block_dst,block_src);
 
+     block_dst.block(0).scale(diag_A_inv);
 
+     block_src.block(0)=block_dst.block(0);
+     block_src.block(1)=0;
+     block_dst=0;
+     B_operator.vmult(block_dst,block_src);
+     dst=block_dst.block(1);
+   }
 
-      block_src.block(1)=src;
-      block_src.block(0)=0;
-      block_dst=0;
-      BT_operator.vmult(block_dst,block_src);
-
-      block_dst.block(0).scale(diag_A_inv);
-
-      block_src.block(0)=block_dst.block(0);
-      block_src.block(1)=0;
-      block_dst=0;
-      B_operator.vmult(block_dst,block_src);
-      dst=block_dst.block(1);
-    }
 
 
 
@@ -283,7 +282,6 @@ namespace aspect
 
           ptmp = 0;
 
-          //try richardson for BC^{-1}B^T
           mp_preconditioner_damped.vmult(ptmp,rhs1);
           ptmp.add(-ptmp.mean_value());
 
@@ -788,8 +786,6 @@ namespace aspect
     A_block_matrix.set_cell_data(active_cell_data);
     lumped_velocity_mass_matrix.set_cell_data(active_cell_data);
     Schur_complement_block_matrix.set_cell_data(active_cell_data);
-     Laplace_block_matrix.set_cell_data(active_cell_data);
-
 
 
     const unsigned int n_levels = this->get_triangulation().n_global_levels();
@@ -2502,13 +2498,6 @@ namespace aspect
     }
 
 
-    //Laplace block matrix
-
-    {
-      Laplace_block_matrix.clear();
-      const std::vector<unsigned int> selected_dof_handler= {/*pressure=*/1};
-      Laplace_block_matrix.initialize(matrix_free,selected_dof_handler,selected_dof_handler);
-    }
 
     // Create GMG matrices and constraints for each multigrid level
     {
@@ -2521,8 +2510,6 @@ namespace aspect
      
        mg_matrices_Laplace.clear_elements();
        mg_matrices_Laplace.resize(0,n_levels-1);
-      level_constraints_p_stored.resize(n_levels);
-      level_constraints_v_stored.resize(n_levels);
 
 
       mg_matrices_B_block.clear_elements();
@@ -2533,6 +2520,7 @@ namespace aspect
       for (unsigned int level=0; level<n_levels; ++level)
         {
           AffineConstraints<double> level_constraints_v;
+          AffineConstraints<double> level_constraints_p;
           const Mapping<dim> &mapping = this->get_parameters().mesh_deformation_enabled
                                         ?
                                         this->get_mesh_deformation_handler().get_level_mapping(level)
@@ -2548,14 +2536,14 @@ namespace aspect
 #endif
 
 #if DEAL_II_VERSION_GTE(9,6,0)
-            level_constraints_v_stored[level].reinit(dof_handler_v.locally_owned_mg_dofs(level), relevant_dofs);
+            level_constraints_v.reinit(dof_handler_v.locally_owned_mg_dofs(level), relevant_dofs);
             for (const auto index : mg_constrained_dofs_A_block.get_boundary_indices(level))
-              level_constraints_v_stored[level].constrain_dof_to_zero(index);
+              level_constraints_v.constrain_dof_to_zero(index);
 #else
             level_constraints_v.reinit(relevant_dofs);
             level_constraints_v.add_lines(mg_constrained_dofs_A_block.get_boundary_indices(level));
 #endif
-            level_constraints_v_stored[level].close();
+            level_constraints_v.close();
 
             const std::set<types::boundary_id> &no_flux_boundaries
               = this->get_boundary_velocity_manager().get_tangential_boundary_velocity_indicators();
@@ -2618,8 +2606,8 @@ namespace aspect
                                                                  user_level_constraints);
 
                 // let Dirichlet values win over no normal flux:
-                level_constraints_v_stored[level].merge(user_level_constraints, AffineConstraints<double>::left_object_wins);
-                level_constraints_v_stored[level].close();
+                level_constraints_v.merge(user_level_constraints, AffineConstraints<double>::left_object_wins);
+                level_constraints_v.close();
               }
           }
           {
@@ -2631,12 +2619,12 @@ namespace aspect
 #endif
 
 #if DEAL_II_VERSION_GTE(9,6,0)
-            level_constraints_p_stored[level].reinit(dof_handler_p.locally_owned_mg_dofs(level), relevant_dofs);
+            level_constraints_p.reinit(dof_handler_p.locally_owned_mg_dofs(level), relevant_dofs);
 #else
             level_constraints_p.reinit(relevant_dofs);
 #endif
 
-            level_constraints_p_stored[level].close();
+            level_constraints_p.close();
           }
 
           // set up MatrixFree objects for each multigrid level
@@ -2650,8 +2638,8 @@ namespace aspect
             additional_data.mg_level = level;
 
             std::vector<const DoFHandler<dim>*> stokes_dofs {&dof_handler_v, &dof_handler_p};
-            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v_stored[level],
-                  &level_constraints_p_stored[level]
+            std::vector<const AffineConstraints<double> *> stokes_constraints {&level_constraints_v,
+                  &level_constraints_p
             };
 
             matrix_free_level->reinit(mapping,

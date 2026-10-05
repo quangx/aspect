@@ -205,8 +205,6 @@ namespace aspect
       FESystem<dim> fe_p;
       FESystem<dim> fe_projection;
 
-      std::vector<dealii::AffineConstraints<double>> level_constraints_p_stored;
-      std::vector<dealii::AffineConstraints<double>> level_constraints_v_stored;
 
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.
