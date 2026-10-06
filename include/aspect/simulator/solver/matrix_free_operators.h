@@ -590,7 +590,7 @@ namespace aspect
          * A pointer to the current cell data that contains viscosity and other required parameters per cell.
          */
         const OperatorCellData<dim,number> *cell_data;
-        std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BCinvBTOperator;
+        std::unique_ptr<BC_invBT_Operator<BOperatorType, BTOperatorType>> BCinvBTOperator;
     };
 
     template <int dim, int degree_v, typename number>

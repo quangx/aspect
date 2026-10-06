@@ -923,7 +923,8 @@ namespace aspect
   template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::PressureLaplaceOperator ()
     :
-    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>(),
+    cell_data(nullptr)
   {}
 
 
@@ -933,6 +934,7 @@ namespace aspect
   MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::clear ()
   {
     this->cell_data = nullptr;
+    this->BCinvBTOperator.reset();
     MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::clear();
   }
 
@@ -1045,8 +1047,15 @@ namespace aspect
   ::apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
                const dealii::LinearAlgebra::distributed::Vector<number> &src) const
   {
-    MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::
-    data->cell_loop(&PressureLaplaceOperator::local_apply, this, dst, src);
+    if(BCinvBTOperator){
+      dealii::LinearAlgebra::distributed::Vector<number> tmp;
+      this->data->initialize_dof_vector(tmp,1);
+      BCinvBTOperator->vmult(tmp, src);
+      dst+=tmp;
+    }
+    else
+      MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::
+      data->cell_loop(&PressureLaplaceOperator::local_apply, this, dst, src);
   }
 
 
@@ -1099,6 +1108,17 @@ namespace aspect
         local_element = 1./local_element;
       }
   }
+  
+  
+   
+  template<int dim, int degree_p, typename number, typename BOperatorType,
+           typename BTOperatorType>
+  void MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::set_BCinvBT(const BOperatorType &B, const BTOperatorType &BT, const dealii::LinearAlgebra::distributed::Vector<double> &inverse_lumped_velocity_mass_matrix)
+{
+  this->BCinvBTOperator=std::make_unique<BC_invBT_Operator<BOperatorType, 
+                                         BTOperatorType>>(B,BT,inverse_lumped_velocity_mass_matrix);
+}
+
 
 
 
