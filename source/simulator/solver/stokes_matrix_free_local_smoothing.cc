@@ -139,36 +139,6 @@ namespace aspect
       return return_op;
     }
 
-    template<class BOperatorType, class BTOperatorType>
-    void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
-                                                                 const dealii::LinearAlgebra::distributed::Vector<double> &src) const
-    {
-      dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
-      dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
-
-      const auto &B_matrix_free=*B_operator.get_matrix_free();
-      block_src.reinit(2);
-      block_dst.reinit(2);
-
-      B_matrix_free.initialize_dof_vector(block_src.block(0),0);
-      B_matrix_free.initialize_dof_vector(block_src.block(1),1);
-
-      B_matrix_free.initialize_dof_vector(block_dst.block(0),0);
-      B_matrix_free.initialize_dof_vector(block_dst.block(1),1);
-
-      block_src.block(1)=src;
-      block_src.block(0)=0;
-      block_dst=0;
-      BT_operator.vmult(block_dst,block_src);
-
-      block_dst.block(0).scale(diag_A_inv);
-
-      block_src.block(0)=block_dst.block(0);
-      block_src.block(1)=0;
-      block_dst=0;
-      B_operator.vmult(block_dst,block_src);
-      dst=block_dst.block(1);
-    }
 
 
 
@@ -211,7 +181,7 @@ namespace aspect
         {
 
 
-          BC_invBT_Operator<BOperatorType, BTOperatorType>
+          MatrixFreeStokesOperators::BC_invBT_Operator<BOperatorType, BTOperatorType>
           Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
           dealii::LinearOperator<VectorType> op_BC_invBT;
 

@@ -21,7 +21,6 @@
 #ifndef _aspect_simulator_stokes_matrix_free_operators_h
 #define _aspect_simulator_stokes_matrix_free_operators_h
 
-#include "block_stokes_preconditioner.h"
 #include <aspect/global.h>
 #include <aspect/simulator/solver/interface.h>
 #include <aspect/simulator.h>
@@ -486,11 +485,30 @@ namespace aspect
     };
 
 
+    template<class BOperatorType, class BTOperatorType>
+    class BC_invBT_Operator
+    {
+      public:
+        BC_invBT_Operator(
+          const BOperatorType &B_operator,
+          const BTOperatorType &BT_operator,
+          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
+          B_operator(B_operator),
+          BT_operator(BT_operator),
+          diag_A_inv(diag_A_inv)
+        {}
+        void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                   const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
+      private:
+        const BOperatorType &B_operator;
+        const BTOperatorType &BT_operator;
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+    };
     /**
      * Operator for the pressure Laplace operator used in the BFBT preconditioner. Matrix is weighted by
      * the inverse of the viscosity.
      */
-    template <int dim, int degree_p, typename number>
+    template <int dim, int degree_p, typename number, class BOperatorType, class BTOperatorType>
     class PressureLaplaceOperator
       : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
     {
@@ -530,6 +548,18 @@ namespace aspect
          */
         void compute_diagonal () override;
 
+        /**
+         * For the finest grid, (Blumped(M_v)^{-1}B^T)'s action is represented
+         * as a triple product rather than discretized as a viscosity
+         * weighted pressure laplace operator. This is consistent
+         * with the treatment given by Rudi et al (2017).
+         */
+         void set_BCinvBT(const BOperatorType &B,
+                          const BTOperatorType &BT,
+                          const dealii::LinearAlgebra::distributed::Vector<double> &inverse_lumped_velocity_mass_matrix);
+  
+
+
       private:
 
         /**
@@ -560,6 +590,7 @@ namespace aspect
          * A pointer to the current cell data that contains viscosity and other required parameters per cell.
          */
         const OperatorCellData<dim,number> *cell_data;
+        std::unique_ptr<internal::BC_invBT_Operator<BOperatorType, BTOperatorType>> BCinvBTOperator;
     };
 
     template <int dim, int degree_v, typename number>

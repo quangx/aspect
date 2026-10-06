@@ -411,25 +411,6 @@ namespace aspect
 
 
 
-    template<class BOperatorType, class BTOperatorType>
-    class BC_invBT_Operator
-    {
-      public:
-        BC_invBT_Operator(
-          const BOperatorType &B_operator,
-          const BTOperatorType &BT_operator,
-          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
-          B_operator(B_operator),
-          BT_operator(BT_operator),
-          diag_A_inv(diag_A_inv)
-        {}
-        void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
-                   const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
-      private:
-        const BOperatorType &B_operator;
-        const BTOperatorType &BT_operator;
-        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
-    };
 
     template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
     class DiagBFBT: public SchurComplementOperator<VectorType>

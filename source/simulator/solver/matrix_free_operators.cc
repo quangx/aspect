@@ -888,18 +888,49 @@ namespace aspect
       }
   }
 
+    template<class BOperatorType, class BTOperatorType>
+    void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                                                                 const dealii::LinearAlgebra::distributed::Vector<double> &src) const
+    {
+      dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
+      dealii::LinearAlgebra::distributed::BlockVector<double> block_dst;
 
-  template <int dim, int degree_p, typename number>
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::PressureLaplaceOperator ()
+      const auto &B_matrix_free=*B_operator.get_matrix_free();
+      block_src.reinit(2);
+      block_dst.reinit(2);
+
+      B_matrix_free.initialize_dof_vector(block_src.block(0),0);
+      B_matrix_free.initialize_dof_vector(block_src.block(1),1);
+
+      B_matrix_free.initialize_dof_vector(block_dst.block(0),0);
+      B_matrix_free.initialize_dof_vector(block_dst.block(1),1);
+
+      block_src.block(1)=src;
+      block_src.block(0)=0;
+      block_dst=0;
+      BT_operator.vmult(block_dst,block_src);
+
+      block_dst.block(0).scale(diag_A_inv);
+
+      block_src.block(0)=block_dst.block(0);
+      block_src.block(1)=0;
+      block_dst=0;
+      B_operator.vmult(block_dst,block_src);
+      dst=block_dst.block(1);
+    }
+
+
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::PressureLaplaceOperator ()
     :
     MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
   {}
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::clear ()
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::clear ()
   {
     this->cell_data = nullptr;
     MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number>>::clear();
@@ -907,9 +938,9 @@ namespace aspect
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::reinit(const Mapping<dim>              &mapping,
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::reinit(const Mapping<dim>              &mapping,
                                                                                   const DoFHandler<dim>           &dof_handler_v,
                                                                                   const DoFHandler<dim>           &dof_handler_p,
                                                                                   const AffineConstraints<number> &constraints_v,
@@ -936,9 +967,9 @@ namespace aspect
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>::
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>::
   set_cell_data (const OperatorCellData<dim,number> &data)
   {
     this->cell_data = &data;
@@ -946,9 +977,9 @@ namespace aspect
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>
   ::local_apply (const dealii::MatrixFree<dim, number>                 &data,
                  dealii::LinearAlgebra::distributed::Vector<number>       &dst,
                  const dealii::LinearAlgebra::distributed::Vector<number> &src,
@@ -967,9 +998,9 @@ namespace aspect
   }
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>
   ::inner_cell_operation(FEEvaluation<dim,
                          degree_p,
                          degree_p+2,
@@ -1008,9 +1039,9 @@ namespace aspect
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>
   ::apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
                const dealii::LinearAlgebra::distributed::Vector<number> &src) const
   {
@@ -1020,9 +1051,9 @@ namespace aspect
 
 
 
-  template <int dim, int degree_p, typename number>
+  template <int dim, int degree_p, typename number, typename BOperatorType, typename BTOperatorType>
   void
-  MatrixFreeStokesOperators::PressureLaplaceOperator<dim,degree_p,number>
+  MatrixFreeStokesOperators::PressureLaplaceOperator<dim, degree_p, number, BOperatorType, BTOperatorType>
   ::compute_diagonal ()
   {
     this->inverse_diagonal_entries =
@@ -1068,6 +1099,7 @@ namespace aspect
         local_element = 1./local_element;
       }
   }
+
 
 
   /**
@@ -1311,8 +1343,12 @@ namespace aspect
   template class MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>;\
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,1,GMGNumberType>; \
   template class MatrixFreeStokesOperators::MassMatrixOperator<dim,2,GMGNumberType>; \
-  template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType>; \
-  template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType>; \
+template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumberType, \
+                                                                    MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
+                                                                    MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>>; \
+  template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,2,GMGNumberType, \
+                                                                    MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
+                                                                    MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>>; \
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,3,GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
