@@ -1371,7 +1371,11 @@ template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumbe
                                                                     MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>>; \
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,3,GMGNumberType>; \
-  template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>;
+  template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>; \
+  template class internal::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
+                                              MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>>; \
+  template class internal::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
+                                              MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>>; 
 
   ASPECT_INSTANTIATE(INSTANTIATE)
 
