@@ -228,10 +228,11 @@ namespace aspect
       using BBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
-      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType, GMGBBlockOperatorType, GMGBTBlockOperatorType>;
       using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
       using LumpedVelocityMassMatrixType=MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, double>;
+      using GMGLumpedVelocityMassMatrixType = MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, GMGNumberType>;
 
 
       StokesMatrixType stokes_matrix;
@@ -241,6 +242,8 @@ namespace aspect
       SchurComplementMatrixType Schur_complement_block_matrix;
       GMGLaplaceType Laplace_block_matrix;
       LumpedVelocityMassMatrixType lumped_velocity_mass_matrix;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_finest_grid;
+  
 
 
 

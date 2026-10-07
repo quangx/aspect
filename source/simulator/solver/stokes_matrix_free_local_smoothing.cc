@@ -2630,6 +2630,17 @@ namespace aspect
                                                   level,
                                                   selected_dof_handler);
           }
+
+      // In the case that we use diag A bfbt, we form the want to use the
+      // true operator Blumped(M_V)^{-1}B^T on the fine grid. 
+          if(level == n_levels - 1){
+            lumped_velocity_mass_matrix_finest_grid.clear();
+            const std::vector<unsigned int> selected_dof_handler={/*velocity=*/0};
+            lumped_velocity_mass_matrix_finest_grid.initialize(matrix_free_level,
+                                                               mg_constrained_dofs_A_block,
+                                                               level,
+                                                               selected_dof_handler);
+          }
           {
             mg_matrices_B_block[level].initialize(matrix_free_level);
             mg_matrices_BT_block[level].initialize(matrix_free_level);
