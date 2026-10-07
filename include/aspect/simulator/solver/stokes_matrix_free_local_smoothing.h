@@ -243,7 +243,7 @@ namespace aspect
       GMGLaplaceType Laplace_block_matrix;
       LumpedVelocityMassMatrixType lumped_velocity_mass_matrix;
       GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_finest_grid;
-  
+
 
 
 

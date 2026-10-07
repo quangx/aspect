@@ -554,10 +554,10 @@ namespace aspect
          * weighted pressure laplace operator. This is consistent
          * with the treatment given by Rudi et al (2017).
          */
-         void set_BCinvBT(const BOperatorType &B,
-                          const BTOperatorType &BT,
-                          const dealii::LinearAlgebra::distributed::Vector<double> &inverse_lumped_velocity_mass_matrix);
-  
+        void set_BCinvBT(const BOperatorType &B,
+                         const BTOperatorType &BT,
+                         const dealii::LinearAlgebra::distributed::Vector<double> &inverse_lumped_velocity_mass_matrix);
+
 
 
       private:
