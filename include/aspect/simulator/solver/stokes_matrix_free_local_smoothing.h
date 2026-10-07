@@ -229,8 +229,8 @@ namespace aspect
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
-      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType, GMGBBlockOperatorType, GMGBTBlockOperatorType>;
       using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType, GMGBBlockOperatorType, GMGBTBlockOperatorType>;
       using LumpedVelocityMassMatrixType=MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, double>;
       using GMGLumpedVelocityMassMatrixType = MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, GMGNumberType>;
 

@@ -836,6 +836,8 @@ namespace aspect
     };
 
     fill_level_cell_data(level_viscosity_vector,level_cell_data);
+    lumped_velocity_mass_matrix_finest_grid.set_cell_data(level_cell_data[n_levels-1]);
+    lumped_velocity_mass_matrix.set_cell_data(active_cell_data);
     for (unsigned int level=0; level<n_levels; ++level)
       {
         // Store viscosity tables and other data into the multigrid level matrix-free objects.
@@ -2682,7 +2684,13 @@ namespace aspect
 
           }
       }
-
+  if(this->get_parameters().use_bfbt){
+    const unsigned int finest_level=this->get_triangulation().n_global_levels()-1;
+    lumped_velocity_mass_matrix_finest_grid.compute_diagonal();
+    mg_matrices_Laplace[finest_level].set_BCinvBT(mg_matrices_B_block[finest_level],
+                                                  mg_matrices_BT_block[finest_level],
+                                                  lumped_velocity_mass_matrix_finest_grid.get_matrix_diagonal_inverse()->get_vector());
+    }
     this->get_computing_timer().leave_subsection("Build Stokes preconditioner");
   }
 

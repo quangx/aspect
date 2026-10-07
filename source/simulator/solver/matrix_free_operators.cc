@@ -152,7 +152,8 @@ namespace aspect
   //class to lump velocity mass matrix for weighted BFBT by Rudi et al (2017).
   template<int dim,int degree_v, typename number>
   MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,degree_v,number>::LumpedVelocityMassOperator():
-    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>()
+    MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>(),
+    cell_data(nullptr)
   {}
 
   template<int dim, int degree_v, typename number>
@@ -889,7 +890,7 @@ namespace aspect
   }
 
     template<class BOperatorType, class BTOperatorType>
-    void BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+    void MatrixFreeStokesOperators::BC_invBT_Operator<BOperatorType, BTOperatorType>::vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
                                                                  const dealii::LinearAlgebra::distributed::Vector<double> &src) const
     {
       dealii::LinearAlgebra::distributed::BlockVector<double> block_src;
@@ -1372,9 +1373,9 @@ template class MatrixFreeStokesOperators::PressureLaplaceOperator<dim,1,GMGNumbe
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,2,GMGNumberType>; \
   template class MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,3,GMGNumberType>; \
   template struct MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>; \
-  template class internal::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
+  template class MatrixFreeStokesOperators::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,2,GMGNumberType>, \
                                               MatrixFreeStokesOperators::BTBlockOperator<dim,2,GMGNumberType>>; \
-  template class internal::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
+  template class MatrixFreeStokesOperators::BC_invBT_Operator<MatrixFreeStokesOperators::BBlockOperator<dim,3,GMGNumberType>, \
                                               MatrixFreeStokesOperators::BTBlockOperator<dim,3,GMGNumberType>>; 
 
   ASPECT_INSTANTIATE(INSTANTIATE)
