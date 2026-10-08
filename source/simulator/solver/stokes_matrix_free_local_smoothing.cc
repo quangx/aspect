@@ -1604,8 +1604,8 @@ namespace aspect
     Multigrid<VectorType> mg_Laplace(mg_matrix_Laplace,
                                      mg_coarse_Laplace_remove_ns,
                                      mg_transfer_Schur_complement,
-                                     mg_smoother_Laplace_remove_ns,
-                                     mg_smoother_Laplace_remove_ns);
+                                     mg_smoother_Laplace/*_remove_ns*/,
+                                     mg_smoother_Laplace/*_remove_ns*/);
     if (this->get_parameters().use_bfbt)
       mg_Laplace.set_edge_matrices(mg_interface_Laplace, mg_interface_Laplace);
 
