@@ -149,8 +149,8 @@ namespace aspect
       const PreconditionerMp &mp_preconditioner_damped,
       const bool do_solve_schur_complement,
       const double solver_tolerance,
-      const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-      const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped,
+      const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix,
+      const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix_damped,
       const StokesMatrixType &system_matrix,
       const AOperatorType &A_operator,
       const BOperatorType &B_operator,
@@ -161,8 +161,8 @@ namespace aspect
         mp_preconditioner_damped(mp_preconditioner_damped),
         do_solve_schur_complement(do_solve_schur_complement),
         solver_tolerance(solver_tolerance),
-        diag_A_inv(diag_A_inv),
-        diag_A_inv_damped(diag_A_inv_damped),
+        lumped_velocity_mass_matrix(lumped_velocity_mass_matrix),
+        lumped_velocity_mass_matrix_damped(lumped_velocity_mass_matrix_damped),
         system_matrix(system_matrix),
         A_operator(A_operator),
         B_operator(B_operator),
@@ -182,7 +182,7 @@ namespace aspect
 
 
           MatrixFreeStokesOperators::BC_invBT_Operator<BOperatorType, BTOperatorType>
-          Op_BC_invBT(B_operator, BT_operator, diag_A_inv);
+          Op_BC_invBT(B_operator, BT_operator, lumped_velocity_mass_matrix);
           dealii::LinearOperator<VectorType> op_BC_invBT;
 
 
@@ -273,11 +273,11 @@ namespace aspect
             block_dst = 0;
             BT_operator.vmult(block_dst, block_src);
 
-            block_dst.block(0).scale(diag_A_inv_damped);
+            block_dst.block(0).scale(lumped_velocity_mass_matrix_damped);
 
             A_operator.vmult(block_src.block(0), block_dst.block(0));
 
-            block_src.block(0).scale(diag_A_inv);
+            block_src.block(0).scale(lumped_velocity_mass_matrix);
 
             block_src.block(1) = 0;
             block_dst = 0;
@@ -579,7 +579,7 @@ namespace aspect
             cell->get_dof_indices(local_dof_indices_damped);
             for (const auto dof:local_dof_indices_damped)
               if (active_viscosity_vector_damped.get_partitioner()->in_local_range(dof))
-                active_viscosity_vector_damped(dof)*=a_r;
+                active_viscosity_vector_damped(dof)*=std::pow(a_r,2.0);
           }
 
 
@@ -739,6 +739,7 @@ namespace aspect
 
     A_block_matrix.set_cell_data(active_cell_data);
     lumped_velocity_mass_matrix.set_cell_data(active_cell_data);
+    lumped_velocity_mass_matrix_damped.set_cell_data(active_cell_data_damped);
     Schur_complement_block_matrix.set_cell_data(active_cell_data);
 
 
@@ -847,6 +848,7 @@ namespace aspect
         mg_matrices_B_block[level].set_cell_data(level_cell_data[level]);
       }
     level_cell_data_laplace.resize(0,n_levels-1);
+    level_cell_data_laplace_damped.resize(0,n_levels-1);
     for (unsigned int level=0; level<n_levels; ++level)
       {
         level_cell_data_laplace[level]=level_cell_data[level];
@@ -859,6 +861,18 @@ namespace aspect
         mg_matrices_Laplace[level].set_cell_data(level_cell_data_laplace[level]);
       }
     level_cell_data_damped.resize(0,n_levels-1);
+
+    for (unsigned int level=0; level<n_levels; ++level)
+      {
+        level_cell_data_laplace_damped[level]=level_cell_data_damped[level];
+        auto &visc=level_cell_data_laplace_damped[level].viscosity;
+        for (unsigned int i=0; i<visc.size(0); ++i)
+          for (unsigned int j=0; j<visc.size(1); ++j)
+            for (unsigned int c=0; c<VectorizedArray<GMGNumberType>::size(); ++c)
+              if (visc(i,j)[c]>0.)
+                visc(i,j)[c]=std::sqrt(visc(i,j)[c]);
+        mg_matrices_Laplace_damped[level].set_cell_data(level_cell_data_laplace_damped[level]);
+      }
     fill_level_cell_data(level_viscosity_vector_damped,level_cell_data_damped);
 
 
@@ -1804,13 +1818,14 @@ namespace aspect
 
 
     A_block_matrix.compute_diagonal();
-    lumped_velocity_mass_matrix.compute_diagonal();
     Schur_complement_block_matrix.compute_diagonal();
     if (this->get_parameters().use_bfbt)
       {
 
         const dealii::LinearAlgebra::distributed::Vector<double> &diag_lumped_mass_inv=lumped_velocity_mass_matrix.get_matrix_diagonal_inverse()->get_vector();
 
+        lumped_velocity_mass_matrix.compute_diagonal();
+        lumped_velocity_mass_matrix_damped.compute_diagonal();
 
         const std::vector<unsigned int> selected_dof_handler = {/*pressure =*/1};
 
@@ -1821,11 +1836,11 @@ namespace aspect
 
         schur_approximation_cheap = std::make_unique<DiagBFBTType>(
                                       prec_Laplace,
-                                      prec_Laplace,
+                                      prec_Laplace_damped,
                                       /*do_solve_schur_complement*/ false,
                                       this->get_parameters().linear_solver_S_block_tolerance,
                                       diag_lumped_mass_inv,
-                                      diag_lumped_mass_inv,
+                                      diag_lumped_mass_inv_damped,
                                       stokes_matrix,
                                       A_block_matrix,
                                       B_block,
@@ -1834,11 +1849,11 @@ namespace aspect
 
         schur_approximation_expensive = std::make_unique<DiagBFBTType>(
                                           prec_Laplace,
-                                          prec_Laplace,
+                                          prec_Laplace_damped,
                                           /*do_solve_schur_complement*/ true,
                                           this->get_parameters().linear_solver_S_block_tolerance,
                                           diag_lumped_mass_inv,
-                                          diag_lumped_mass_inv,
+                                          diag_lumped_mass_inv_damped,
                                           stokes_matrix,
                                           A_block_matrix,
                                           B_block,
@@ -2436,6 +2451,9 @@ namespace aspect
       lumped_velocity_mass_matrix.clear();
       const std::vector<unsigned int> selected_dof_handler= {/*velocity=*/0};
       lumped_velocity_mass_matrix.initialize(matrix_free,selected_dof_handler);
+
+      lumped_velocity_mass_matrix_damped.clear();
+      lumped_velocity_mass_matrix_damped.initialize(matrix_free,selected_dof_handler);
     }
 
     // B^T block matrix
@@ -2470,6 +2488,10 @@ namespace aspect
 
       mg_matrices_Laplace.clear_elements();
       mg_matrices_Laplace.resize(0,n_levels-1);
+
+
+      mg_matrices_damped_Laplace.clear_elements();
+      mg_matrices_damped_Laplace.resize(0,n_levels-1);
 
 
       mg_matrices_B_block.clear_elements();
