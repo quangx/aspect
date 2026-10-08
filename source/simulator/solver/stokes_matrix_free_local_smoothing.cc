@@ -293,10 +293,10 @@ namespace aspect
           dst = 0;
           //try richardson iteration
           mp_preconditioner.vmult(dst,rhs2);
-          if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
-            {
-              std::cout<<"dst mean value is "<<dst.mean_value();
-            }
+//          if (std::abs(dst.mean_value())>(1e-6*rhs2.l2_norm()))
+//            {
+//              std::cout<<"dst mean value is "<<dst.mean_value();
+//            }
 //          solver_control.set_tolerance(solver_tolerance*rhs2.l2_norm());
 //          solver.solve(rmv*op_BC_invBT, dst, rhs2, mp_preconditioner);
 
