@@ -220,6 +220,8 @@ namespace aspect
       MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_damped;
       MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>>
       level_cell_data_laplace;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>>
+      level_cell_data_laplace_damped;
 
       using StokesMatrixType = MatrixFreeStokesOperators::StokesOperator<dim,velocity_degree,double>;
       using SchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,double>;
@@ -242,7 +244,9 @@ namespace aspect
       SchurComplementMatrixType Schur_complement_block_matrix;
       GMGLaplaceType Laplace_block_matrix;
       LumpedVelocityMassMatrixType lumped_velocity_mass_matrix;
+      LumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped;
       GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_finest_grid;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped_finest_grid;
 
 
 
@@ -256,6 +260,7 @@ namespace aspect
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block_damped;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
       MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace_damped;
       MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
       MGLevelObject<GMGBBlockOperatorType> mg_matrices_B_block;
 

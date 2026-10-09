@@ -423,7 +423,7 @@ namespace aspect
          * @param do_solve_schur_complement Full solve with Schur complement or just vmult.
          * @param solver_tolerance The relative solver tolerance for the inner CG solves
          *        with BC^{-1}B^T.
-         * @param diag_A_inv Diagonal of A used as C and D in the diag A-BFBT preconditioner.
+         * @param lumped_velocity_mass_matrix Lumped velocity mass matrix used in weighted BFBT.
          * @param system_matrix The Stokes operator of the form
          * [A B^T
          *  B 0].
@@ -436,8 +436,8 @@ namespace aspect
                  const PreconditionerMp &mp_preconditioner_damped,
                  const bool do_solve_schur_complement,
                  const double solver_tolerance,
-                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv,
-                 const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped,
+                 const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix,
+                 const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix_damped,
                  const StokesMatrixType &system_matrix,
                  const AOperatorType &A_operator,
                  const BOperatorType &B_operator,
@@ -455,8 +455,8 @@ namespace aspect
         const PreconditionerMp &mp_preconditioner_damped;
         const bool do_solve_schur_complement;
         const double solver_tolerance;
-        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
-        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv_damped;
+        const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix;
+        const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix_damped;
         const StokesMatrixType &system_matrix;
         const AOperatorType &A_operator;
         const BOperatorType &B_operator;
