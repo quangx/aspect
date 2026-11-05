@@ -19,10 +19,15 @@
 #include <aspect/simulator/solver/interface.h>
 #include <aspect/simulator.h>
 
+#include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/solver_control.h>
+#include <deal.II/lac/trilinos_solver.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
 
+#include <deal.II/multigrid/mg_base.h>
 #include <deal.II/multigrid/mg_constrained_dofs.h>
 #include <deal.II/multigrid/multigrid.h>
 #include <deal.II/multigrid/mg_transfer_matrix_free.h>
@@ -36,11 +41,44 @@
 #include <deal.II/lac/block_vector.h>
 #include <deal.II/lac/la_parallel_vector.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
+#include <aspect/simulator/solver/block_stokes_preconditioner.h>
 
 namespace aspect
 {
   namespace internal
   {
+
+    /**
+     * Applies nullspace removal in coarser grids in v cycle.
+     */
+    template<typename VectorType, typename SmootherType>
+    class MGSmootherRemoveNullspace: public dealii::MGSmootherBase<VectorType>
+    {
+      public:
+
+        virtual void smooth(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+        virtual void apply(const unsigned int level, VectorType &dst, const VectorType &src) const override;
+        virtual void clear() override;
+        void initialize(const SmootherType &smoother);
+
+      private:
+        const SmootherType *smoother=nullptr;
+    };
+    /**
+      * Applies the coarse grid solve with a mean value nullspace removal.
+      * Used in diag A bfbt BC^{-1}B^T v-cycle.
+      */
+    template <typename VectorType>
+    class MGCoarseGridApplySmootherRemoveNullspace: public dealii::MGCoarseGridBase<VectorType>
+    {
+      public:
+        virtual void operator()(const unsigned int level,
+                                VectorType &dst,
+                                const VectorType &src) const override;
+        void initialize(const dealii::MGCoarseGridApplySmoother<VectorType> &coarse_grid_solver);
+      private:
+        const dealii::MGCoarseGridApplySmoother<VectorType> *coarse_grid_solver=nullptr;
+    };
     /**
      * Matrix-free operators must use deal.II defined vectors, while the rest of the ASPECT
      * software is based on Trilinos vectors. Here we define functions which copy between the
@@ -359,6 +397,67 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+    /**
+    * Operator for the B^T block.
+    */
+    template <int dim, int degree_v, typename number>
+    class BBlockOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::BlockVector<number>>
+    {
+      public:
+
+        /**
+         * Constructor.
+         */
+        BBlockOperator ();
+
+        /**
+         * Reset object.
+         */
+        void clear () override;
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::BlockVector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function doesn't do anything, it's created to use the matrixfree loop.
+         */
+        void local_apply_face (const dealii::MatrixFree<dim, number> &data,
+                               dealii::LinearAlgebra::distributed::BlockVector<number> &dst,
+                               const dealii::LinearAlgebra::distributed::BlockVector<number> &src,
+                               const std::pair<unsigned int, unsigned int> &face_range) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
 
 
 
@@ -436,6 +535,173 @@ namespace aspect
          */
         const OperatorCellData<dim,number> *cell_data;
     };
+
+
+    template<class BOperatorType, class BTOperatorType>
+    class BC_invBT_Operator
+    {
+      public:
+        BC_invBT_Operator(
+          const BOperatorType &B_operator,
+          const BTOperatorType &BT_operator,
+          const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv):
+          B_operator(B_operator),
+          BT_operator(BT_operator),
+          diag_A_inv(diag_A_inv)
+        {}
+        void vmult(dealii::LinearAlgebra::distributed::Vector<double> &dst,
+                   const dealii::LinearAlgebra::distributed::Vector<double> &src) const;
+      private:
+        const BOperatorType &B_operator;
+        const BTOperatorType &BT_operator;
+        const dealii::LinearAlgebra::distributed::Vector<double> &diag_A_inv;
+    };
+    /**
+     * Operator for the pressure Laplace operator used in the BFBT preconditioner. Matrix is weighted by
+     * the inverse of the viscosity.
+     */
+    template <int dim, int degree_p, typename number, class BOperatorType, class BTOperatorType>
+    class PressureLaplaceOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+
+        /**
+         * Constructor
+         */
+        PressureLaplaceOperator ();
+
+        /**
+         * Reset the object.
+         */
+        void clear () override;
+
+        /**
+         * Initialize the MatrixFree object given in @p mf_storage and use that to
+         * initialize this operator.
+         */
+        void reinit(const Mapping<dim>              &mapping,
+                    const DoFHandler<dim>           &dof_handler_v,
+                    const DoFHandler<dim>           &dof_handler_p,
+                    const AffineConstraints<number> &constraints_v,
+                    const AffineConstraints<number> &constraints_p,
+                    std::shared_ptr<MatrixFree<dim,double>> mf_storage,
+                    const unsigned int level = numbers::invalid_unsigned_int);
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+        /**
+         * For the finest grid, (Blumped(M_v)^{-1}B^T)'s action is represented
+         * as a triple product rather than discretized as a viscosity
+         * weighted pressure laplace operator. This is consistent
+         * with the treatment given by Rudi et al (2017).
+         */
+        void set_BCinvBT(const BOperatorType &B,
+                         const BTOperatorType &BT,
+                         const dealii::LinearAlgebra::distributed::Vector<double> &inverse_lumped_velocity_mass_matrix);
+
+
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+        /**
+         * This function contains the inner-most operation done on a single cell
+         */
+        void inner_cell_operation(FEEvaluation<dim,
+                                  degree_p,
+                                  degree_p+2,
+                                  1,
+                                  number> &pressure) const;
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+        std::unique_ptr<BC_invBT_Operator<BOperatorType, BTOperatorType>> BCinvBTOperator;
+    };
+
+    template <int dim, int degree_v, typename number>
+    class LumpedVelocityMassOperator
+      : public MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number>>
+    {
+      public:
+
+        /**
+         * Constructor
+         */
+        LumpedVelocityMassOperator ();
+
+        /**
+         * Reset the object.
+         */
+
+        /**
+         * Initialize the MatrixFree object given in @p mf_storage and use that to
+         * initialize this operator.
+         */
+
+        /**
+         * Pass in a reference to the problem data.
+         */
+        void set_cell_data (const OperatorCellData<dim,number> &data);
+
+        /**
+         * Computes the diagonal of the matrix. Since matrix-free operators have not access
+         * to matrix elements, we must apply the matrix-free operator to the unit vectors to
+         * recover the diagonal.
+         */
+        void compute_diagonal () override;
+
+      private:
+
+        /**
+         * Performs the application of the matrix-free operator. This function is called by
+         * vmult() functions MatrixFreeOperators::Base.
+         */
+        void apply_add (dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                        const dealii::LinearAlgebra::distributed::Vector<number> &src) const override;
+
+        /**
+         * Defines the application of the cell matrix.
+         */
+        void local_apply (const dealii::MatrixFree<dim, number> &data,
+                          dealii::LinearAlgebra::distributed::Vector<number> &dst,
+                          const dealii::LinearAlgebra::distributed::Vector<number> &src,
+                          const std::pair<unsigned int, unsigned int> &cell_range) const;
+
+
+        /**
+         * A pointer to the current cell data that contains viscosity and other required parameters per cell.
+         */
+        const OperatorCellData<dim,number> *cell_data;
+    };
+
+
 
     /**
      * Operator for the A block of the Stokes matrix. The same class is used for both
@@ -544,7 +810,74 @@ namespace aspect
         const OperatorCellData<dim,number> *cell_data;
 
     };
+
+    template <class StokesMatrixType, class AOperatorType, class BOperatorType, class BTOperatorType, class SchurComplementMatrixType,class VectorType, class PreconditionerMp>
+    class DiagBFBT: public internal::SchurComplementOperator<VectorType>
+    {
+      public:
+        /**
+         * Constructor.
+         * @param mp_preconditioner The preconditioner for the BC^{-1}B^T operator
+         *        used in the inner CG solves.
+         * @param do_solve_schur_complement Full solve with Schur complement or just vmult.
+         * @param solver_tolerance The relative solver tolerance for the inner CG solves
+         *        with BC^{-1}B^T.
+         * @param lumped_velocity_mass_matrix Lumped velocity mass matrix used in weighted BFBT.
+         * @param system_matrix The Stokes operator of the form
+         * [A B^T
+         *  B 0].
+         * @param A_operator The velocity block operator.
+         * @param B_operator The B block operator.
+         * @param BT_operator The B^T block operator.
+         * @param mp_matrix Pressure mass matrix used as preconditioner for BC^{-1}B^T.
+         * @param constraints Affineconstraints used for boundary corrections.
+         * @param pressure_laplace_has_nullspace Flag that determines how boundary conditions are handled for the
+         * pressure Laplace operator.
+         */
+        DiagBFBT(const PreconditionerMp &mp_preconditioner,
+                 const PreconditionerMp &mp_preconditioner_damped,
+                 const bool do_solve_schur_complement,
+                 const double solver_tolerance,
+                 const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix,
+                 const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix_damped,
+                 const StokesMatrixType &system_matrix,
+                 const AOperatorType &A_operator,
+                 const BOperatorType &B_operator,
+                 const BTOperatorType &BT_operator,
+                 const SchurComplementMatrixType &mp_matrix,
+                 const dealii::AffineConstraints<double> &constraints,
+                 const bool pressure_laplace_has_nullspace);
+
+        void vmult(VectorType &dst,
+                   const VectorType &src) const override;
+
+        unsigned int n_iterations() const override;
+
+      private:
+        mutable unsigned int n_iterations_;
+        const PreconditionerMp &mp_preconditioner;
+        const PreconditionerMp &mp_preconditioner_damped;
+        const bool do_solve_schur_complement;
+        const double solver_tolerance;
+        const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix;
+        const dealii::LinearAlgebra::distributed::Vector<double> &lumped_velocity_mass_matrix_damped;
+        const StokesMatrixType &system_matrix;
+        const AOperatorType &A_operator;
+        const BOperatorType &B_operator;
+        const BTOperatorType &BT_operator;
+        const SchurComplementMatrixType &mp_matrix;
+        const dealii::AffineConstraints<double> &constraints;
+        const bool pressure_laplace_has_nullspace;
+    };
+
+
+
+
+
+
   }
+
+
 
 }
 

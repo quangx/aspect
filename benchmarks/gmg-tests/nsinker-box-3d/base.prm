@@ -22,6 +22,8 @@ subsection Solver parameters
 
   subsection Matrix Free
     set Output details = true
+    set Velocity coarse solver = CG with AMG
+    set Minimum number of cells on coarsest level = 256
   end
 end
 

@@ -155,19 +155,6 @@ namespace aspect
         return dst.l2_norm();
       }
 
-      /**
-       * Base class for Schur Complement operators.
-       */
-      class SchurComplementOperator
-      {
-        public:
-          virtual ~SchurComplementOperator() = default;
-
-          virtual void vmult(LinearAlgebra::Vector &dst,
-                             const LinearAlgebra::Vector &src) const=0;
-          virtual unsigned int n_iterations() const=0;
-
-      };
 
       /**
        * This class approximates the Schur Complement inverse operator
@@ -177,7 +164,7 @@ namespace aspect
        * velocity mass matrix.
        */
       template <class PreconditionerMp>
-      class WeightedBFBT: public SchurComplementOperator
+      class WeightedBFBT: public aspect::internal::SchurComplementOperator<LinearAlgebra::Vector>
       {
         public:
           /**
@@ -298,7 +285,7 @@ namespace aspect
         * PreconditionerMp passed to the constructor.
         */
       template <class PreconditionerMp>
-      class InverseWeightedMassMatrix: public SchurComplementOperator
+      class InverseWeightedMassMatrix: public aspect::internal::SchurComplementOperator<LinearAlgebra::Vector>
       {
         public:
           /**
@@ -557,7 +544,7 @@ namespace aspect
       solver_control_cheap.enable_history_data();
       solver_control_expensive.enable_history_data();
 
-      std::unique_ptr<internal::SchurComplementOperator> schur;
+      std::unique_ptr<aspect::internal::SchurComplementOperator<LinearAlgebra::Vector>> schur;
       if (this->get_parameters().use_bfbt)
         {
           schur = std::make_unique<internal::WeightedBFBT<LinearAlgebra::PreconditionBase>>(
@@ -584,7 +571,8 @@ namespace aspect
         this->stokes_A_block_is_symmetric(),
         this->get_parameters().linear_solver_A_block_tolerance);
       const aspect::internal::BlockSchurPreconditioner<aspect::internal::InverseVelocityBlock<LinearAlgebra::PreconditionAMG, LinearAlgebra::Vector, LinearAlgebra::SparseMatrix>,
-            internal::SchurComplementOperator, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
+            LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector,
+            LinearAlgebra::Vector>
             preconditioner_cheap (
               inverse_velocity_block_cheap,
               *schur,
@@ -598,7 +586,8 @@ namespace aspect
         this->stokes_A_block_is_symmetric(),
         this->get_parameters().linear_solver_A_block_tolerance);
       const aspect::internal::BlockSchurPreconditioner<aspect::internal::InverseVelocityBlock<LinearAlgebra::PreconditionAMG, LinearAlgebra::Vector, LinearAlgebra::SparseMatrix>,
-            internal::SchurComplementOperator, LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector>
+            LinearAlgebra::SparseMatrix, LinearAlgebra::BlockVector,
+            LinearAlgebra::Vector>
             preconditioner_expensive (
               inverse_velocity_block_expensive,
               *schur,

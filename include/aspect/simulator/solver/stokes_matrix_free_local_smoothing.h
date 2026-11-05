@@ -15,10 +15,17 @@
 #ifndef _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 #define _aspect_simulator_solver_stokes_matrix_free_local_smoothing_h
 
+#include "matrix_free_operators.h"
+#include "stokes_matrix_free.h"
 #include <aspect/global.h>
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
+#include <deal.II/base/mg_level_object.h>
+#include <deal.II/base/types.h>
+#include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/lac/precondition.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -31,6 +38,7 @@
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_smoother.h>
 #include <deal.II/multigrid/mg_matrix.h>
+#include <vector>
 
 namespace aspect
 {
@@ -223,33 +231,60 @@ namespace aspect
       FESystem<dim> fe_p;
       FESystem<dim> fe_projection;
 
+
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for the active cells.
        */
       MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data;
 
+      MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data_damped;
+
       /**
        * Store the data for the Stokes operator (viscosity, etc.) for each multigrid level.
        */
       MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_damped;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>>
+      level_cell_data_laplace;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>>
+      level_cell_data_laplace_damped;
+
+      std::set<types::boundary_id> free_velocity_boundaries;
 
       using StokesMatrixType = MatrixFreeStokesOperators::StokesOperator<dim,velocity_degree,double>;
       using SchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,double>;
       using ABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,double>;
       using BTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,double>;
+      using BBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBBlockOperatorType = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType, GMGBBlockOperatorType, GMGBTBlockOperatorType>;
+      using LumpedVelocityMassMatrixType=MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, double>;
+      using GMGLumpedVelocityMassMatrixType = MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim, velocity_degree, GMGNumberType>;
 
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
+      BBlockOperatorType B_block;
       SchurComplementMatrixType Schur_complement_block_matrix;
+      GMGLaplaceType Laplace_block_matrix;
+      LumpedVelocityMassMatrixType lumped_velocity_mass_matrix;
+      LumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_finest_grid;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped_finest_grid;
 
       AffineConstraints<double> constraints_v;
       AffineConstraints<double> constraints_p;
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
+      MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block_damped;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace_damped;
+      MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
+      MGLevelObject<GMGBBlockOperatorType> mg_matrices_B_block;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;

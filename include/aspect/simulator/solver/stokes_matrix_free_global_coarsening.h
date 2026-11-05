@@ -19,6 +19,7 @@
 #include <aspect/simulator/solver/stokes_matrix_free.h>
 #include <aspect/simulator/solver/matrix_free_operators.h>
 
+#include <deal.II/lac/affine_constraints.h>
 #include <deal.II/matrix_free/matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/fe_evaluation.h>
@@ -245,7 +246,10 @@ namespace aspect
       using BTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
-
+     //for weighted bfbt 
+      using GMGBBlockOperatorType  = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
+      using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
+      
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
@@ -253,6 +257,10 @@ namespace aspect
 
       MGLevelObject<GMGABlockMatrixType> mg_matrices_A_block;
       MGLevelObject<GMGSchurComplementMatrixType> mg_matrices_Schur_complement;
+
+      //for weighted bfbt
+      MGLevelObject<GMGBTBlockOperatorType> mg_matrices_BT_block;
+      MGLevelObject<GMGBBlockOperatorType> mg_matrices_B_block;
 
       MGConstrainedDoFs mg_constrained_dofs_A_block;
       MGConstrainedDoFs mg_constrained_dofs_Schur_complement;
@@ -294,6 +302,31 @@ namespace aspect
       MGLevelObject<MGTwoLevelTransfer<dim, dealii::LinearAlgebra::distributed::Vector<GMGNumberType>>> transfers_p;
       std::unique_ptr<GCMGTransferType<dim,GMGNumberType>> mg_transfer_A_block;
       std::unique_ptr<GCMGTransferType<dim,GMGNumberType>> mg_transfer_Schur_complement;
+
+/// For weighted BFBT.
+      using BBlockOperatorType     = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,double>;
+      using GMGLaplaceType = MatrixFreeStokesOperators::PressureLaplaceOperator<dim,velocity_degree-1,GMGNumberType,
+            GMGBBlockOperatorType, GMGBTBlockOperatorType>;
+      using LumpedVelocityMassMatrixType    = MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,velocity_degree,double>;
+      using GMGLumpedVelocityMassMatrixType = MatrixFreeStokesOperators::LumpedVelocityMassOperator<dim,velocity_degree,GMGNumberType>;
+
+      MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType> active_cell_data_damped;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_damped;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_laplace;
+      MGLevelObject<MatrixFreeStokesOperators::OperatorCellData<dim, GMGNumberType>> level_cell_data_laplace_damped;
+
+      BBlockOperatorType B_block;
+      LumpedVelocityMassMatrixType lumped_velocity_mass_matrix;
+      LumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped;
+
+      GMGBBlockOperatorType  B_block_finest;
+      GMGBTBlockOperatorType BT_block_finest;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_finest_grid;
+      GMGLumpedVelocityMassMatrixType lumped_velocity_mass_matrix_damped_finest_grid;
+
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace;
+      MGLevelObject<GMGLaplaceType> mg_matrices_Laplace_damped;
+      MGLevelObject<AffineConstraints<double>> constraints_p_laplace;
   };
 }
 
