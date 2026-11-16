@@ -260,22 +260,40 @@ namespace aspect
                                                                   maximum_viscosity);
 
     // Dampen copy of viscosity vector for weighted BFBT.
-    const double a_r=1.0;
-    dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped=active_viscosity_vector;
+       // Dampen copy of viscosity vector for weighted BFBT.
+    dealii::LinearAlgebra::distributed::Vector<double> active_viscosity_vector_damped = active_viscosity_vector;
+
+    // Boundary ids that carry a Dirichlet velocity condition (full or partial),
+    // matching the sets used when building the velocity constraints.
+    std::set<types::boundary_id> dirichlet_ids = this->get_boundary_velocity_manager().get_zero_boundary_velocity_indicators();
+    for (const auto id : this->get_boundary_velocity_manager().get_prescribed_boundary_velocity_indicators())
+      dirichlet_ids.insert(id);   // masked or not, at least one component is constrained
+    for (const auto id : this->get_boundary_velocity_manager().get_tangential_boundary_velocity_indicators())
+      dirichlet_ids.insert(id);   // normal component is constrained
 
     {
       std::vector<types::global_dof_index> local_dof_indices_damped(dof_handler_projection.get_fe().dofs_per_cell);
-      for (const auto &cell:dof_handler_projection.active_cell_iterators())
+      for (const auto &cell : dof_handler_projection.active_cell_iterators())
         if (!cell->is_artificial() && cell->at_boundary())
           {
+            bool has_dirichlet_face = false;
+            for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+              if (cell->face(f)->at_boundary() &&
+                  dirichlet_ids.count(cell->face(f)->boundary_id()) > 0)
+                {
+                  has_dirichlet_face = true;
+                  break;
+                }
+            if (!has_dirichlet_face)
+              continue;
+
+            const double a_r = std::pow(2.0, static_cast<int>(cell->level()) - 4);
+
             cell->get_dof_indices(local_dof_indices_damped);
-            for (const auto dof:local_dof_indices_damped)
+            for (const auto dof : local_dof_indices_damped)
               if (active_viscosity_vector_damped.get_partitioner()->in_local_range(dof))
-                active_viscosity_vector_damped(dof)*=std::pow(a_r,2.0);
+                active_viscosity_vector_damped(dof) *= a_r * a_r;
           }
-
-
-
     }
     active_cell_data.is_compressible = this->get_material_model().is_compressible();
     active_cell_data.pressure_scaling = this->get_pressure_scaling();
