@@ -2237,14 +2237,12 @@ namespace aspect
         lumped_velocity_mass_matrix_finest_grid.compute_diagonal();
         lumped_velocity_mass_matrix_damped_finest_grid.compute_diagonal();
 
-        if(!this->free_velocity_boundaries.empty())
-    {
+
         mg_matrices_Laplace[max_level].set_BCinvBT(mg_matrices_B_block[max_level], mg_matrices_BT_block[max_level],
                                                    lumped_velocity_mass_matrix_finest_grid.get_matrix_diagonal_inverse()->get_vector());
 
         mg_matrices_Laplace_damped[max_level].set_BCinvBT(mg_matrices_B_block[max_level], mg_matrices_BT_block[max_level],
                                                           lumped_velocity_mass_matrix_damped_finest_grid.get_matrix_diagonal_inverse()->get_vector());
-    }
       }
     this->get_computing_timer().leave_subsection("Build Stokes preconditioner");
   }
