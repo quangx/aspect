@@ -246,10 +246,10 @@ namespace aspect
       using BTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,double>;
       using GMGSchurComplementMatrixType = MatrixFreeStokesOperators::MassMatrixOperator<dim,velocity_degree-1,GMGNumberType>;
       using GMGABlockMatrixType = MatrixFreeStokesOperators::ABlockOperator<dim,velocity_degree,GMGNumberType>;
-     //for weighted bfbt 
+      //for weighted bfbt
       using GMGBBlockOperatorType  = MatrixFreeStokesOperators::BBlockOperator<dim,velocity_degree,GMGNumberType>;
       using GMGBTBlockOperatorType = MatrixFreeStokesOperators::BTBlockOperator<dim,velocity_degree,GMGNumberType>;
-      
+
       StokesMatrixType stokes_matrix;
       ABlockMatrixType A_block_matrix;
       BTBlockOperatorType BT_block;
